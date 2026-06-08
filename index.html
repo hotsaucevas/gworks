@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>GWorkshop — Phase Sheet</title>
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #1a1a1a;
+      --surface-2: #242424;
+      --border: #333;
+      --text: #e8e8e8;
+      --text-muted: #888;
+      --accent: #c9a227;
+      --free: #4a9;
+      --cp1: #e8a838;
+      --cp2: #e85858;
+      --phase-command: #7b68ee;
+      --phase-movement: #48b8d0;
+      --phase-shooting: #e87040;
+      --phase-charge: #e8d040;
+      --phase-fight: #e84060;
+      --phase-end: #888;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+
+    .cp-tracker {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .cp-tracker button {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .cp-tracker .cp-value {
+      color: var(--accent);
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .screen { display: none; padding: 16px; }
+    .screen.active { display: block; }
+
+    .input-area {
+      width: 100%;
+      min-height: 200px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text);
+      font-family: monospace;
+      font-size: 13px;
+      resize: vertical;
+    }
+
+    .input-area::placeholder { color: var(--text-muted); }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:active { opacity: 0.8; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .assignment-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .assignment-card h3 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+
+    .assignment-card select {
+      width: 100%;
+      padding: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .turn-toggle {
+      display: flex;
+      margin-bottom: 16px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .turn-toggle button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .turn-toggle button.active {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .phase-section { margin-bottom: 16px; }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .phase-header .phase-count {
+      margin-left: auto;
+      font-size: 11px;
+      opacity: 0.6;
+      font-weight: 400;
+    }
+
+    .phase-section .ability-list.collapsed { display: none; }
+    .phase-section .phase-header { border-radius: 8px; }
+    .phase-section .phase-header.expanded { border-radius: 8px 8px 0 0; }
+
+    .phase-command .phase-header { background: color-mix(in srgb, var(--phase-command) 20%, transparent); color: var(--phase-command); }
+    .phase-movement .phase-header { background: color-mix(in srgb, var(--phase-movement) 20%, transparent); color: var(--phase-movement); }
+    .phase-shooting .phase-header { background: color-mix(in srgb, var(--phase-shooting) 20%, transparent); color: var(--phase-shooting); }
+    .phase-charge .phase-header { background: color-mix(in srgb, var(--phase-charge) 20%, transparent); color: var(--phase-charge); }
+    .phase-fight .phase-header { background: color-mix(in srgb, var(--phase-fight) 20%, transparent); color: var(--phase-fight); }
+    .phase-end .phase-header { background: color-mix(in srgb, var(--phase-end) 20%, transparent); color: var(--phase-end); }
+
+    .ability-list {
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      overflow: hidden;
+    }
+
+    .ability-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      transition: opacity 0.2s, transform 0.15s;
+    }
+
+    .ability-item.dragging {
+      opacity: 0.5;
+      transform: scale(0.97);
+    }
+
+    .ability-item.drag-over {
+      border-top: 2px solid var(--accent);
+    }
+
+    .drag-handle {
+      cursor: grab;
+      color: var(--text-muted);
+      font-size: 14px;
+      padding: 0 6px 0 0;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .drag-handle:active { cursor: grabbing; }
+
+    .ability-item:last-child { border-bottom: none; }
+    .ability-item.used { opacity: 0.35; text-decoration: line-through; }
+    .ability-item.dimmed { opacity: 0.25; }
+    .ability-item.highlighted { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+    .ability-actions {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .ability-actions button {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-size: 11px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .ability-actions button:active { opacity: 0.7; }
+
+    .ability-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .ability-name { font-size: 13px; font-weight: 600; }
+
+    .ability-cost {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .cost-free { background: color-mix(in srgb, var(--free) 25%, transparent); color: var(--free); }
+    .cost-1 { background: color-mix(in srgb, var(--cp1) 25%, transparent); color: var(--cp1); }
+    .cost-2 { background: color-mix(in srgb, var(--cp2) 25%, transparent); color: var(--cp2); }
+
+    .ability-source { font-size: 11px; color: var(--text-muted); }
+
+    .ability-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-top: 4px;
+    }
+
+    .ability-unit {
+      font-size: 11px;
+      color: var(--accent);
+      margin-top: 3px;
+    }
+
+    .reset-bar { padding: 16px; text-align: center; }
+
+    .collapsed { display: none !important; }
+
+    .parse-summary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .parse-summary strong { color: var(--accent); }
+
+    .loading {
+      text-align: center;
+      padding: 40px 16px;
+    }
+
+    .loading .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-status {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    .error-msg {
+      background: color-mix(in srgb, var(--cp2) 15%, transparent);
+      border: 1px solid var(--cp2);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+      color: var(--cp2);
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>PHASE SHEET</h1>
+  <div class="cp-tracker" id="cpTracker" style="display:none;">
+    <button id="cpMinus">−</button>
+    <span class="cp-value" id="cpValue">0</span>
+    <button id="cpPlus">+</button>
+    <span style="font-size:11px; color:var(--text-muted);">CP</span>
+  </div>
+</div>
+
+<!-- Screen 1: Input -->
+<div class="screen active" id="screenInput">
+  <textarea class="input-area" id="armyInput" placeholder="Paste your army list export here..."></textarea>
+  <button class="btn btn-primary" id="btnParse">Generate Phase Sheet</button>
+  <p class="hint">Export your list from the Warhammer app and paste it above. Abilities are fetched live from 40k.app — any faction, always current.</p>
+  <div id="inputError"></div>
+</div>
+
+<!-- Screen 2: Loading -->
+<div class="screen" id="screenLoading">
+  <div class="loading">
+    <div class="spinner"></div>
+    <div>Fetching abilities...</div>
+    <div class="loading-status" id="loadingStatus">Connecting to 40k.app</div>
+  </div>
+</div>
+
+<!-- Screen 3: Leader Assignment -->
+<div class="screen" id="screenLeaders">
+  <div class="parse-summary" id="parseSummary"></div>
+  <h2 style="font-size:15px; margin-bottom:12px;">Assign Leaders</h2>
+  <div id="leaderAssignments"></div>
+  <button class="btn btn-primary" id="btnGenerate">Generate Sheet</button>
+  <button class="btn btn-secondary" id="btnBack">Back</button>
+</div>
+
+<!-- Screen 4: Phase Sheet -->
+<div class="screen" id="screenSheet">
+  <!-- Dread Abilities Tracker (Chaos Knights only) -->
+  <div id="dreadPanel" style="display:none; margin-bottom:16px;">
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+      <div onclick="this.parentElement.querySelector('.dread-body').classList.toggle('collapsed')" style="padding:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:12px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px;">Harbingers of Dread</span>
+        <span style="font-size:10px; color:var(--text-muted);">tap to toggle</span>
+      </div>
+      <div class="dread-body collapsed" style="padding:0 12px 12px;">
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Deathly Terror always active. Toggle others as selected (rounds 1, 3, 5).</div>
+        <div id="dreadToggles" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detachment Rule Tracker (interactive for Malefic Surge, collapsible for others) -->
+  <div id="detachmentRulePanel" style="display:none; margin-bottom:16px;">
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+      <div onclick="this.parentElement.querySelector('.det-body').classList.toggle('collapsed')" style="padding:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        <span id="detRuleName" style="font-size:12px; font-weight:700; color:var(--phase-command); text-transform:uppercase; letter-spacing:0.5px;"></span>
+        <span style="font-size:10px; color:var(--text-muted);">tap to toggle</span>
+      </div>
+      <div class="det-body collapsed" style="padding:0 12px 12px;">
+        <div id="detRuleIntro" style="font-size:12px; color:var(--text-muted); line-height:1.5; margin-bottom:8px;"></div>
+        <div id="detRuleToggles" style="display:flex; flex-direction:column; gap:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="turn-toggle">
+    <button class="active" data-turn="yours">Your Turn</button>
+    <button data-turn="opponents">Opponent's Turn</button>
+  </div>
+  <div id="phaseContent"></div>
+  <div class="reset-bar">
+    <button class="btn btn-secondary" id="btnReset">New List</button>
+  </div>
+</div>
+
+<script>
+// ─── Config ───
+const BASE = 'https://www.40k.app';
+
+// ─── State ───
+let parsedArmy = null;
+let fetchedData = null; // { armyRule, detachment, units }
+let assignments = {};
+let cp = 0;
+let usedAbilities = new Set();
+let abilityStates = new Map(); // id -> 'dimmed' | 'highlighted' | null
+
+// ─── Fetch Helper (uses /api/proxy serverless function) ───
+async function corsFetch(path, type = 'raw') {
+  const targetUrl = BASE + path;
+  const url = `/api/proxy?url=${encodeURIComponent(targetUrl)}&type=${type}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`Failed to fetch ${path}: ${resp.status}`);
+  if (type === 'raw') return await resp.text();
+  return await resp.json();
+}
+
+// ─── Faction slug from name ───
+function factionSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+// ─── Unit slug from name ───
+function unitSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+// ─── Detachment slug ───
+function detachmentSlug(name) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+// ─── Fetch all data for a parsed army ───
+async function fetchArmyData(army) {
+  const slug = factionSlug(army.faction);
+  const detSlug = detachmentSlug(army.detachment);
+  const status = document.getElementById('loadingStatus');
+
+  // 1. Fetch army rules (returns JSON with army_rule.name + army_rule.description)
+  status.textContent = `Fetching ${army.faction} army rules...`;
+  let armyRule = { name: army.faction + ' Army Rule', description: '' };
+  try {
+    const data = await corsFetch(`/factions/${slug}/rules`, 'rules');
+    if (data.army_rule) armyRule = data.army_rule;
+  } catch (e) { console.warn('Army rules fetch failed:', e); }
+
+  // 2. Fetch detachment (returns JSON with rule, stratagems[], enhancements{})
+  status.textContent = `Fetching ${army.detachment} detachment...`;
+  let detachment = { rule: null, stratagems: [], enhancements: {} };
+  if (army.detachment && army.detachment !== 'unknown') {
+    try {
+      const data = await corsFetch(`/factions/${slug}/rules/detachment/${detSlug}`, 'detachment');
+      detachment = data;
+    } catch (e) { console.warn('Detachment fetch failed:', e); }
+  }
+
+  // 3. Fetch each unit datasheet (returns JSON with keywords[], abilities[])
+  const units = {};
+  const uniqueUnits = [...new Set(army.units.map(u => u.name))];
+
+  for (let i = 0; i < uniqueUnits.length; i++) {
+    const unitName = uniqueUnits[i];
+    const unitEntry = army.units.find(u => u.name === unitName);
+    status.textContent = `Fetching ${unitName} (${i + 1}/${uniqueUnits.length})...`;
+    try {
+      const uSlug = unitSlug(unitName);
+      let data = null;
+
+      if (unitEntry?.isAlly) {
+        const allyFactions = ['chaos-daemons', 'chaos-space-marines', 'death-guard', 'thousand-sons', 'world-eaters', 'astra-militarum', 'agents-of-the-imperium'];
+        for (const af of allyFactions) {
+          try {
+            data = await corsFetch(`/factions/${af}/unit/${uSlug}`, 'unit');
+            if (data && data.abilities && data.abilities.length > 0) break;
+            data = null;
+          } catch (_) { data = null; }
+        }
+      }
+
+      if (!data) {
+        data = await corsFetch(`/factions/${slug}/unit/${uSlug}`, 'unit');
+      }
+
+      units[unitName] = data || { keywords: [], abilities: [] };
+    } catch (e) {
+      console.warn(`Unit fetch failed for ${unitName}:`, e);
+      units[unitName] = { keywords: [], abilities: [] };
+    }
+  }
+
+  return { armyRule, detachment, units };
+}
+
+// ─── Parser ───
+// Handles the Warhammer app export format (v1.53+)
+// Format: army name + points, faction, game size, detachment, then sections
+// like CHARACTERS, OTHER DATASHEETS, ALLIED UNITS with units + wargear
+function parseArmyList(text) {
+  const result = {
+    faction: null,
+    detachment: null,
+    units: [],
+    enhancements: {},
+    warlord: null,
+    allies: []
+  };
+
+  // Normalize: the export is often a single blob. Split on known boundaries.
+  // First, normalize line breaks — the export may come as one long string
+  let normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  // Insert line breaks before section headers (they run directly into text)
+  normalized = normalized.replace(/(CHARACTERS|OTHER DATASHEETS|ALLIED UNITS|Exported with)/g, '\n$1\n');
+  // Insert line breaks before unit entries (Name followed by (XXX points))
+  // Must handle cases like "CHARACTERSKnight Despoiler" already split above
+  normalized = normalized.replace(/([a-z\)•])([A-Z][A-Za-z' -]+\(\d+\s*points?\))/g, '$1\n$2');
+  // Also handle: after section header directly into unit name
+  normalized = normalized.replace(/(CHARACTERS|OTHER DATASHEETS|ALLIED UNITS)\n?([A-Z][A-Za-z' -]+\(\d+)/g, '$1\n$2');
+  // Insert line breaks before bullet points
+  normalized = normalized.replace(/([^\n])(• )/g, '$1\n$2');
+  // Insert line breaks before wargear lines (1x, 2x etc)
+  normalized = normalized.replace(/([^\n•\d])((?:\d+x )[A-Z])/g, '$1\n$2');
+  // Split faction/game size/detachment that run together
+  // Pattern: "Chaos KnightsStrike Force (2000 points)Infernal Lance"
+  // Insert breaks before known game sizes
+  normalized = normalized.replace(/(Strike Force|Incursion|Onslaught|Combat Patrol)/g, '\n$1');
+  // Insert break after the game size points closing paren and before detachment name
+  normalized = normalized.replace(/(\(\d+\s*points?\))([A-Z])/g, '$1\n$2');
+
+  const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
+
+  // --- Detect faction and detachment ---
+  // The format starts with: [list name] ([points] points)[Faction][Game Size][Detachment]
+  // We need to find the faction. Known factions list for matching:
+  const knownFactions = [
+    'Adepta Sororitas', 'Adeptus Custodes', 'Adeptus Mechanicus', 'Aeldari',
+    'Agents of the Imperium', 'Astra Militarum', 'Black Templars', 'Blood Angels',
+    'Chaos Daemons', 'Chaos Knights', 'Chaos Space Marines', 'Dark Angels',
+    'Death Guard', 'Deathwatch', 'Drukhari', 'Genestealer Cults', 'Grey Knights',
+    'Harlequins', 'Imperial Knights', 'Leagues of Votann', 'Necrons', 'Orks',
+    'Space Marines', 'Space Wolves', 'T\'au Empire', 'Thousand Sons',
+    'Tyranids', 'World Eaters'
+  ];
+
+  const gameSizes = ['Incursion', 'Strike Force', 'Onslaught', 'Combat Patrol'];
+
+  // Strategy: scan first few lines for faction match
+  const headerText = lines.slice(0, 5).join(' ');
+
+  for (const faction of knownFactions) {
+    if (headerText.includes(faction)) {
+      result.faction = faction;
+      break;
+    }
+  }
+
+  // Find game size line to locate detachment (comes right after)
+  for (let i = 0; i < Math.min(lines.length, 10); i++) {
+    for (const size of gameSizes) {
+      if (lines[i].includes(size)) {
+        // After splitting, the detachment should be on its own line after the game size line
+        // Check if there's text after the game size on the same line
+        const afterSize = lines[i].split(size)[1]?.replace(/^\s*\(\d+\s*points?\)\s*/,'').trim();
+        if (afterSize && afterSize.length > 2 && !afterSize.match(/^(CHARACTERS|OTHER)/)) {
+          result.detachment = afterSize;
+        } else {
+          // Look at subsequent lines for the detachment name
+          for (let j = i + 1; j < Math.min(lines.length, i + 3); j++) {
+            if (!lines[j].match(/^(CHARACTERS|OTHER|\d|•|Exported)/) && lines[j].length > 2) {
+              result.detachment = lines[j];
+              break;
+            }
+          }
+        }
+        break;
+      }
+    }
+    if (result.detachment) break;
+  }
+
+  // --- Parse units ---
+  let currentSection = null;
+  let currentUnit = null;
+  let warlordNextUnit = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Section headers
+    if (line === 'CHARACTERS' || line === 'OTHER DATASHEETS' || line === 'ALLIED UNITS') {
+      currentSection = line;
+      continue;
+    }
+
+    // Skip export footer
+    if (line.startsWith('Exported with')) break;
+
+    // Skip army list name line (first entry with points, before any section)
+    // Unit detection: "Unit Name (XXX points)"
+    const unitMatch = line.match(/^(.+?)\s*\((\d+)\s*points?\)$/i);
+    if (unitMatch) {
+      // Skip if we haven't hit a section header yet (it's the list name or game size)
+      if (!currentSection) continue;
+
+      currentUnit = {
+        name: unitMatch[1].trim(),
+        points: parseInt(unitMatch[2]),
+        qty: 1,
+        isAlly: currentSection === 'ALLIED UNITS'
+      };
+      result.units.push(currentUnit);
+      continue;
+    }
+
+    // Warlord marker
+    if (line === '• Warlord' || line === 'Warlord') {
+      if (currentUnit) result.warlord = currentUnit.name;
+      continue;
+    }
+
+    // Enhancement detection
+    const enhMatch = line.match(/^•?\s*Enhancement:\s*(.+)$/i);
+    if (enhMatch && currentUnit) {
+      result.enhancements[currentUnit.name] = enhMatch[1].trim();
+      continue;
+    }
+
+    // Skip wargear lines (1x Something, • 1x Something)
+    // These are useful info but not needed for phase sheet generation
+  }
+
+  // Deduplicate units — count quantities
+  const unitCounts = {};
+  const deduped = [];
+  for (const unit of result.units) {
+    const key = unit.name + (unit.isAlly ? '_ally' : '');
+    if (unitCounts[key]) {
+      unitCounts[key].qty++;
+    } else {
+      unitCounts[key] = { ...unit };
+      deduped.push(unitCounts[key]);
+    }
+  }
+  result.units = deduped;
+
+  return result;
+}
+
+// ─── Leader Assignment UI ───
+function showLeaderScreen() {
+  const summary = document.getElementById('parseSummary');
+  summary.innerHTML = `
+    <strong>${parsedArmy.faction}</strong> — ${parsedArmy.detachment}<br>
+    ${parsedArmy.units.length} unit${parsedArmy.units.length > 1 ? 's' : ''} • 
+    ${Object.keys(parsedArmy.enhancements).length} enhancement${Object.keys(parsedArmy.enhancements).length !== 1 ? 's' : ''}
+  `;
+
+  const container = document.getElementById('leaderAssignments');
+  container.innerHTML = '';
+
+  const unitNames = parsedArmy.units.map(u => u.name);
+  const leaders = parsedArmy.units.filter(u => {
+    const unitData = fetchedData.units[u.name];
+    return unitData && unitData.keywords.some(k => k.toUpperCase() === 'CHARACTER');
+  });
+
+  if (leaders.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">No leaders to assign.</p>';
+    return;
+  }
+
+  const nonCharacters = parsedArmy.units.filter(u => {
+    const unitData = fetchedData.units[u.name];
+    return !unitData || !unitData.keywords.some(k => k.toUpperCase() === 'CHARACTER');
+  });
+
+  leaders.forEach(leader => {
+    const card = document.createElement('div');
+    card.className = 'assignment-card';
+    card.innerHTML = `
+      <h3>${leader.name}</h3>
+      <select data-leader="${leader.name}">
+        <option value="">Unattached</option>
+        ${nonCharacters.map(t => `<option value="${t.name}">${t.name}</option>`).join('')}
+      </select>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function collectAssignments() {
+  assignments = {};
+  document.querySelectorAll('#leaderAssignments select').forEach(sel => {
+    const leader = sel.dataset.leader;
+    const target = sel.value;
+    if (target) assignments[leader] = target;
+  });
+}
+
+// ─── Ability Phase Classification (client-side) ───
+function classifyPhase(desc) {
+  const d = (desc || '').toLowerCase();
+  const phases = [];
+  if (d.includes('command phase')) phases.push('command');
+  if (d.includes('movement phase') || d.includes('advance roll')) phases.push('movement');
+  if (d.includes('shooting phase') || d.includes('ranged attack')) phases.push('shooting');
+  if (d.includes('fight phase') || d.includes('melee attack')) phases.push('fight');
+  if (/charge (phase|roll|move)/.test(d) && !d.includes('shooting')) phases.push('charge');
+  // End phase: only match explicit "end phase" or "end of the/your turn" — NOT "until the end of the phase"
+  if (/\b(end phase|at the end of .*(turn|battle round))\b/.test(d)) phases.push('end');
+  if (phases.length === 0) {
+    if (d.includes('makes an attack') || d.includes('shoot or fight')) return 'shooting,fight';
+    return 'all';
+  }
+  return phases.join(',');
+}
+
+function classifyTurn(desc) {
+  const d = (desc || '').toLowerCase();
+  if (d.includes("your opponent's") || d.includes("opponent's shooting") || d.includes("opponent's command")) return 'opponents';
+  if (d.includes('your command phase') || d.includes('your movement') || d.includes('your shooting')) return 'yours';
+  return 'both';
+}
+
+function classifyTrigger(desc) {
+  const d = (desc || '').toLowerCase();
+  if (d.includes('at the start')) return 'start';
+  if (d.includes('at the end')) return 'end';
+  if (d.includes('each time') && d.includes('makes an attack')) return 'when_attacking';
+  if (d.includes('selected to shoot')) return 'when_shooting';
+  if (d.includes('selected to fight')) return 'when_fighting';
+  if (d.includes('charge roll') || d.includes('charge move')) return 'when_charging';
+  if (d.includes('targeted') || d.includes('allocated to')) return 'when_attacked';
+  return 'passive';
+}
+
+// ─── Harbingers of Dread (Chaos Knights army rule) ───
+const DREAD_ABILITIES = {
+  always: {
+    id: 'deathly-terror',
+    name: 'Deathly Terror (Aura)',
+    description: 'While an enemy unit is within 9" of this model, worsen the Leadership characteristic of models in that unit by 1.',
+    phase: 'all', turn: 'both', trigger: 'passive'
+  },
+  selectable: [
+    { id: 'despair', name: '1 — Despair (Aura)', description: 'While an enemy unit is within 9" of this model, worsen the Leadership of models in that unit by 1 (cumulative with Deathly Terror).', phase: 'all', turn: 'both', trigger: 'passive' },
+    { id: 'doom', name: '2 — Doom', description: 'Each time this model makes an attack, if the target is Battle-shocked, add 1 to the Wound roll.', phase: 'shooting,fight', turn: 'both', trigger: 'when_attacking' },
+    { id: 'darkness', name: '3 — Darkness', description: 'Each time an attack is made against this model, if the attacking unit is Battle-shocked or more than 18" away, subtract 1 from the Hit roll.', phase: 'shooting,fight', turn: 'both', trigger: 'when_attacked' },
+    { id: 'dismay', name: '4 — Dismay (Aura)', description: 'In the Battle-shock step of your opponent\'s Command phase, each enemy unit below Starting Strength and within 9" of this model must take a Battle-shock test.', phase: 'command', turn: 'opponents', trigger: 'start' },
+    { id: 'delirium', name: '5 — Delirium (Aura)', description: 'While an enemy unit Below Half-strength is within 9" of this model, each time that unit fails a Battle-shock test, it suffers D3 mortal wounds.', phase: 'command', turn: 'opponents', trigger: 'start' },
+    { id: 'dominion', name: '6 — Dominion', description: 'Add 3" to the range of this model\'s Aura abilities.', phase: 'all', turn: 'both', trigger: 'passive' }
+  ]
+};
+
+let activeDread = new Set(); // IDs of currently active dread abilities
+let activeSurge = new Set(); // IDs of currently active malefic surge abilities
+
+// ─── Malefic Surge Abilities (Infernal Lance detachment rule) ───
+const MALEFIC_SURGE = {
+  intro: "In your Command phase, one or more CHAOS KNIGHTS units can make a Malefic Surge. Take a Leadership test — if failed, suffer D3 mortal wounds. Until your next Command phase, that unit is Empowered and can use one ability below. Once used, it is no longer Empowered.",
+  abilities: [
+    { id: 'unholy-hunger', name: 'Unholy Hunger', description: 'When a model in this unit makes a Normal, Advance or Fall Back move, add 3" to its Move characteristic until end of phase.', phase: 'movement', turn: 'yours', trigger: 'when_moving' },
+    { id: 'diabolic-power', name: 'Diabolic Power', description: 'When this unit is selected to shoot or fight, select [LETHAL HITS] or [SUSTAINED HITS 1]. Weapons have the selected ability until end of phase.', phase: 'shooting,fight', turn: 'both', trigger: 'when_attacking' },
+    { id: 'unnatural-fortitude', name: 'Unnatural Fortitude', description: 'When this unit is selected as the target of an attack, select either: 5+ invulnerable save, or Feel No Pain 6+. Active until end of phase.', phase: 'shooting,fight', turn: 'both', trigger: 'when_attacked' }
+  ]
+};
+
+function renderDreadPanel() {
+  const panel = document.getElementById('dreadPanel');
+  const container = document.getElementById('dreadToggles');
+  const detPanel = document.getElementById('detachmentRulePanel');
+
+  // Detachment rule panel
+  if (fetchedData?.detachment?.rule?.name) {
+    detPanel.style.display = 'block';
+    document.getElementById('detRuleName').textContent = fetchedData.detachment.rule.name;
+
+    const introEl = document.getElementById('detRuleIntro');
+    const togglesEl = document.getElementById('detRuleToggles');
+
+    // Check if this is Malefic Surge (interactive) or generic (static text)
+    if (fetchedData.detachment.rule.name === 'Malefic Surge') {
+      introEl.textContent = MALEFIC_SURGE.intro;
+      togglesEl.innerHTML = '';
+      MALEFIC_SURGE.abilities.forEach(ab => {
+        const checked = activeSurge.has(ab.id) ? 'checked' : '';
+        togglesEl.innerHTML += `
+          <label style="display:flex; align-items:start; gap:8px; padding:6px 8px; background:var(--surface-2); border-radius:6px; font-size:12px; cursor:pointer;">
+            <input type="checkbox" ${checked} data-surge="${ab.id}" style="accent-color:var(--phase-command); margin-top:2px;">
+            <span><span style="font-weight:600; color:var(--phase-command);">${ab.name}</span><br><span style="color:var(--text-muted);">${ab.description}</span></span>
+          </label>
+        `;
+      });
+      // Event listeners
+      togglesEl.querySelectorAll('input[data-surge]').forEach(input => {
+        input.addEventListener('change', () => {
+          if (input.checked) {
+            activeSurge.add(input.dataset.surge);
+          } else {
+            activeSurge.delete(input.dataset.surge);
+          }
+          const activeTurn = document.querySelector('.turn-toggle button.active')?.dataset.turn || 'yours';
+          renderPhaseSheet(activeTurn);
+        });
+      });
+    } else {
+      // Generic detachment rule — show as static text
+      let ruleDesc = fetchedData.detachment.rule.description || '';
+      ruleDesc = ruleDesc.replace(/\*\*/g, '').replace(/\\n/g, '\n');
+      const ruleHtml = ruleDesc.split('\n').filter(l => l.trim()).map(line => {
+        line = line.trim();
+        if (line.startsWith('■') || line.startsWith('○')) {
+          return `<div style="padding-left:12px; margin-top:4px;">${line}</div>`;
+        }
+        return `<p style="margin-top:6px;">${line}</p>`;
+      }).join('');
+      introEl.innerHTML = ruleHtml || 'See detachment reference for details.';
+      togglesEl.innerHTML = '';
+    }
+  } else {
+    detPanel.style.display = 'none';
+  }
+
+  // Dread panel (Chaos Knights only)
+  if (parsedArmy?.faction !== 'Chaos Knights') {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  container.innerHTML = '';
+
+  // Always-active ability (shown but not toggleable)
+  container.innerHTML += `
+    <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; background:color-mix(in srgb, var(--free) 10%, transparent); border-radius:6px; font-size:12px;">
+      <input type="checkbox" checked disabled style="accent-color:var(--free);">
+      <span style="color:var(--free); font-weight:600;">Deathly Terror</span>
+      <span style="color:var(--text-muted);">— always active</span>
+    </label>
+  `;
+
+  // Selectable abilities
+  DREAD_ABILITIES.selectable.forEach(ab => {
+    const checked = activeDread.has(ab.id) ? 'checked' : '';
+    container.innerHTML += `
+      <label style="display:flex; align-items:start; gap:8px; padding:6px 8px; background:var(--surface-2); border-radius:6px; font-size:12px; cursor:pointer;">
+        <input type="checkbox" ${checked} data-dread="${ab.id}" style="accent-color:var(--accent); margin-top:2px;">
+        <span><span style="font-weight:600;">${ab.name}</span><br><span style="color:var(--text-muted);">${ab.description}</span></span>
+      </label>
+    `;
+  });
+
+  // Event listeners for toggles
+  container.querySelectorAll('input[data-dread]').forEach(input => {
+    input.addEventListener('change', () => {
+      if (input.checked) {
+        activeDread.add(input.dataset.dread);
+      } else {
+        activeDread.delete(input.dataset.dread);
+      }
+      // Re-render the phase sheet with updated dread abilities
+      const activeTurn = document.querySelector('.turn-toggle button.active')?.dataset.turn || 'yours';
+      renderPhaseSheet(activeTurn);
+    });
+  });
+}
+
+// ─── Core Stratagems (always available) ───
+const CORE_STRATAGEMS = [
+  { name: "Command Re-roll", cost: 1, phase: "all", turn: "both", trigger: "any_roll", description: "Re-roll one Hit roll, Wound roll, Damage roll, saving throw, Advance roll, Charge roll, or Desperate Escape test." },
+  { name: "Epic Challenge", cost: 1, phase: "fight", turn: "both", trigger: "when_fighting", description: "CHARACTER melee attacks gain [PRECISION] until end of phase." },
+  { name: "Insane Bravery", cost: 1, phase: "command", turn: "yours", trigger: "when_testing", description: "Automatically pass one Battle-shock test. Once per battle." },
+  { name: "Overwatch", cost: 1, phase: "movement,charge", turn: "opponents", trigger: "when_moving", description: "Shoot at an enemy making a move within 24\", hitting on 6s." },
+  { name: "Go to Ground", cost: 1, phase: "shooting", turn: "opponents", trigger: "when_attacked", description: "INFANTRY gains 6+ invulnerable save and benefit of cover until end of phase." },
+  { name: "Smokescreen", cost: 1, phase: "movement", turn: "opponents", trigger: "when_attacked", description: "SMOKE unit: subtract 1 from Hit rolls against it." },
+  { name: "Rapid Ingress", cost: 1, phase: "end", turn: "opponents", trigger: "end", description: "Set up one Reserves unit on the battlefield within 9\" of any enemy." },
+  { name: "Fire Overwatch", cost: 1, phase: "charge", turn: "opponents", trigger: "when_charged", description: "Shoot at charging unit, hitting on 6s." },
+  { name: "Heroic Intervention", cost: 2, phase: "charge", turn: "opponents", trigger: "after_charge", description: "One unit within 6\" makes a 2D6\" move toward the closest enemy." },
+  { name: "Grenades", cost: 1, phase: "shooting", turn: "yours", trigger: "when_shooting", description: "GRENADES unit: one model makes D6 S4 AP0 D1 [BLAST] attack." },
+  { name: "Tank Shock", cost: 1, phase: "charge", turn: "yours", trigger: "when_charging", description: "VEHICLE/MOUNTED finishing a Charge: roll D6 per model (max 6). Each 5+ = 1 mortal wound." }
+];
+
+// ─── Phase Sheet Generation ───
+function generatePhaseSheet(turn) {
+  const phases = ['command', 'movement', 'shooting', 'charge', 'fight', 'end'];
+  const phaseAbilities = {};
+  phases.forEach(p => phaseAbilities[p] = []);
+
+  function addAbility(ability, source, unitName, cost) {
+    const abilPhases = ability.phase.split(',');
+    const abilTurn = ability.turn;
+    if (abilTurn !== 'both' && abilTurn !== turn) return;
+
+    abilPhases.forEach(p => {
+      if (p === 'all') {
+        phases.forEach(phase => {
+          phaseAbilities[phase].push({ ...ability, source, unitName, cost: cost ?? 0 });
+        });
+      } else if (phaseAbilities[p]) {
+        phaseAbilities[p].push({ ...ability, source, unitName, cost: cost ?? 0 });
+      }
+    });
+  }
+
+  // 1. Army Rule — special handling for Chaos Knights Harbingers of Dread
+  if (parsedArmy.faction === 'Chaos Knights') {
+    // Deathly Terror is always active
+    addAbility(DREAD_ABILITIES.always, 'Army Rule', null, 0);
+    // Add selected Dread abilities
+    DREAD_ABILITIES.selectable.forEach(ab => {
+      if (activeDread.has(ab.id)) {
+        addAbility(ab, 'Dread Ability', null, 0);
+      }
+    });
+    // Reminder to select in Command phase (rounds 1, 3, 5)
+    addAbility({
+      name: 'Select Dread Abilities',
+      description: 'At the start of rounds 1, 3, and 5: pick one Dread ability OR roll 2D6 to randomly activate two. Use the tracker above to mark active abilities.',
+      phase: 'command', turn: 'yours', trigger: 'start'
+    }, 'Army Rule', null, 0);
+  } else if (fetchedData.armyRule?.name) {
+    addAbility({
+      ...fetchedData.armyRule,
+      phase: 'command',
+      turn: 'yours',
+      trigger: 'start'
+    }, 'Army Rule', null, 0);
+  }
+
+  // 2. Detachment Rule
+  if (fetchedData.detachment?.rule?.name) {
+    if (fetchedData.detachment.rule.name === 'Malefic Surge') {
+      // Command phase reminder only
+      addAbility({
+        name: 'Malefic Surge',
+        description: 'Take a Leadership test to become Empowered. If failed, suffer D3 mortal wounds. Use the tracker above to mark active surge abilities.',
+        phase: 'command',
+        turn: 'yours',
+        trigger: 'start'
+      }, 'Detachment Rule', null, 0);
+      // Add active surge abilities to their correct phases
+      MALEFIC_SURGE.abilities.forEach(ab => {
+        if (activeSurge.has(ab.id)) {
+          addAbility(ab, 'Malefic Surge', null, 0);
+        }
+      });
+    } else {
+      // Generic detachment rule
+      const ruleDesc = fetchedData.detachment.rule.description || fetchedData.detachment.rule.name;
+      addAbility({
+        name: fetchedData.detachment.rule.name,
+        description: ruleDesc,
+        phase: 'command',
+        turn: 'yours',
+        trigger: 'start'
+      }, 'Detachment Rule', null, 0);
+    }
+  }
+
+  // 3. Detachment Stratagems
+  fetchedData.detachment?.stratagems?.forEach(strat => {
+    const classified = {
+      ...strat,
+      phase: strat.phase || classifyPhase(strat.description),
+      turn: strat.turn || classifyTurn(strat.description),
+      trigger: strat.trigger || classifyTrigger(strat.description)
+    };
+    addAbility(classified, 'Stratagem', null, strat.cost || 1);
+  });
+
+  // 4. Core Stratagems
+  CORE_STRATAGEMS.forEach(strat => {
+    addAbility(strat, 'Core', null, strat.cost);
+  });
+
+  // 5. Unit abilities
+  parsedArmy.units.forEach(unit => {
+    const unitData = fetchedData.units[unit.name];
+    if (!unitData || !unitData.abilities) return;
+
+    unitData.abilities.forEach(ab => {
+      // Skip the invulnerable save and damaged entries — they're not phase-relevant actions
+      if (ab.name.includes('invulnerable') || ab.name.includes('DAMAGED')) return;
+
+      const classified = {
+        ...ab,
+        phase: ab.phase || classifyPhase(ab.description),
+        turn: ab.turn || classifyTurn(ab.description),
+        trigger: ab.trigger || classifyTrigger(ab.description),
+        leader_ability: ab.leader_ability || false
+      };
+
+      if (classified.leader_ability) {
+        const ledUnit = assignments[unit.name];
+        if (ledUnit) {
+          addAbility(classified, `${unit.name} (leading)`, ledUnit, 0);
+        } else {
+          addAbility(classified, unit.name, unit.name, 0);
+        }
+      } else {
+        addAbility(classified, unit.name, unit.name, 0);
+      }
+    });
+  });
+
+  // 6. Enhancements
+  Object.entries(parsedArmy.enhancements).forEach(([unitName, enhName]) => {
+    const enh = fetchedData.detachment?.enhancements?.[enhName];
+    if (enh) {
+      addAbility({
+        name: enhName,
+        description: enh.description,
+        phase: 'all',
+        turn: 'both',
+        trigger: 'passive'
+      }, 'Enhancement', unitName, 0);
+    }
+  });
+
+  return { phases, phaseAbilities };
+}
+
+function renderPhaseSheet(turn) {
+  const { phases, phaseAbilities } = generatePhaseSheet(turn);
+  const container = document.getElementById('phaseContent');
+  container.innerHTML = '';
+
+  const triggerOrder = ['start', 'passive', 'when_moving', 'when_shooting', 'when_attacking', 'when_fighting', 'when_charging', 'when_charged', 'after_charge', 'when_attacked', 'when_destroyed', 'when_testing', 'any_roll', 'end'];
+
+  phases.forEach(phase => {
+    const abilities = phaseAbilities[phase];
+    if (abilities.length === 0) return;
+
+    abilities.sort((a, b) => triggerOrder.indexOf(a.trigger) - triggerOrder.indexOf(b.trigger));
+
+    const section = document.createElement('div');
+    section.className = `phase-section phase-${phase}`;
+    section.innerHTML = `
+      <div class="phase-header" onclick="togglePhase(this)" data-phase="${phase}">${phase} Phase<span class="phase-count">${abilities.length}</span></div>
+      <div class="ability-list collapsed">
+        ${abilities.map((ab, i) => {
+          const id = `${turn}-${phase}-${i}`;
+          const isUsed = usedAbilities.has(id);
+          const dimState = abilityStates.get(id);
+          const stateClass = dimState === 'dimmed' ? 'dimmed' : dimState === 'highlighted' ? 'highlighted' : '';
+          const costClass = ab.cost === 0 ? 'cost-free' : ab.cost === 1 ? 'cost-1' : 'cost-2';
+          const costLabel = ab.cost === 0 ? 'FREE' : `${ab.cost}CP`;
+          const isOncePerBattle = /once per battle(?!\s*round)/i.test(ab.description);
+          const onceAttr = isOncePerBattle ? `onclick="toggleAbility('${id}')"` : '';
+          const onceTag = isOncePerBattle ? '<span class="once-badge">ONCE</span>' : '';
+          return `
+            <div class="ability-item ${isUsed ? 'used' : ''} ${stateClass}" data-id="${id}" draggable="true" ${onceAttr}>
+              <div class="ability-meta">
+                <span class="drag-handle">⠿</span>
+                <span class="ability-name">${ab.name}</span>
+                ${onceTag}
+                <span class="ability-cost ${costClass}">${costLabel}</span>
+                <span class="ability-source">${ab.source}</span>
+                <span class="ability-actions">
+                  <button onclick="event.stopPropagation(); setAbilityState('${id}','highlighted')" title="Highlight">★</button>
+                  <button onclick="event.stopPropagation(); setAbilityState('${id}','dimmed')" title="Dim">◌</button>
+                </span>
+              </div>
+              <div class="ability-desc">${ab.description}</div>
+              ${ab.unitName ? `<div class="ability-unit">↳ ${ab.unitName}</div>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    container.appendChild(section);
+  });
+
+  if (container.innerHTML === '') {
+    container.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:40px;">No abilities for this turn.</p>';
+  }
+
+  // Attach drag-and-drop listeners to all ability lists
+  container.querySelectorAll('.ability-list').forEach(list => {
+    setupDragDrop(list);
+  });
+}
+
+// ─── Drag and Drop ───
+let draggedEl = null;
+
+function setupDragDrop(list) {
+  const items = list.querySelectorAll('.ability-item');
+
+  items.forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      draggedEl = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', '');
+    });
+
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      list.querySelectorAll('.ability-item').forEach(el => el.classList.remove('drag-over'));
+      draggedEl = null;
+    });
+
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if (draggedEl && draggedEl !== item && draggedEl.parentElement === item.parentElement) {
+        item.classList.add('drag-over');
+      }
+    });
+
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drag-over');
+    });
+
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (draggedEl && draggedEl !== item && draggedEl.parentElement === item.parentElement) {
+        const allItems = [...list.querySelectorAll('.ability-item')];
+        const dragIdx = allItems.indexOf(draggedEl);
+        const dropIdx = allItems.indexOf(item);
+        if (dragIdx < dropIdx) {
+          item.after(draggedEl);
+        } else {
+          item.before(draggedEl);
+        }
+      }
+    });
+  });
+
+  // Touch support for mobile drag
+  let touchDragged = null;
+  let touchClone = null;
+  let touchStartY = 0;
+  let longPressTimer = null;
+
+  items.forEach(item => {
+    const handle = item.querySelector('.drag-handle');
+    if (!handle) return;
+
+    handle.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+      longPressTimer = setTimeout(() => {
+        touchDragged = item;
+        item.classList.add('dragging');
+        // Haptic feedback if available
+        if (navigator.vibrate) navigator.vibrate(30);
+      }, 200);
+    }, { passive: true });
+
+    handle.addEventListener('touchmove', (e) => {
+      if (!touchDragged) {
+        clearTimeout(longPressTimer);
+        return;
+      }
+      e.preventDefault();
+      const touch = e.touches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const targetItem = target?.closest('.ability-item');
+
+      list.querySelectorAll('.ability-item').forEach(el => el.classList.remove('drag-over'));
+      if (targetItem && targetItem !== touchDragged && targetItem.parentElement === touchDragged.parentElement) {
+        targetItem.classList.add('drag-over');
+      }
+    });
+
+    handle.addEventListener('touchend', (e) => {
+      clearTimeout(longPressTimer);
+      if (!touchDragged) return;
+
+      const touch = e.changedTouches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const targetItem = target?.closest('.ability-item');
+
+      if (targetItem && targetItem !== touchDragged && targetItem.parentElement === touchDragged.parentElement) {
+        const allItems = [...list.querySelectorAll('.ability-item')];
+        const dragIdx = allItems.indexOf(touchDragged);
+        const dropIdx = allItems.indexOf(targetItem);
+        if (dragIdx < dropIdx) {
+          targetItem.after(touchDragged);
+        } else {
+          targetItem.before(touchDragged);
+        }
+      }
+
+      list.querySelectorAll('.ability-item').forEach(el => el.classList.remove('drag-over'));
+      touchDragged.classList.remove('dragging');
+      touchDragged = null;
+    });
+  });
+}
+
+function toggleAbility(id) {
+  if (usedAbilities.has(id)) usedAbilities.delete(id);
+  else usedAbilities.add(id);
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (el) el.classList.toggle('used');
+}
+
+function setAbilityState(id, state) {
+  const current = abilityStates.get(id);
+  if (current === state) {
+    // Toggle off if same button pressed again
+    abilityStates.delete(id);
+  } else {
+    abilityStates.set(id, state);
+  }
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (el) {
+    el.classList.remove('dimmed', 'highlighted');
+    const newState = abilityStates.get(id);
+    if (newState) el.classList.add(newState);
+  }
+}
+
+function togglePhase(headerEl) {
+  const list = headerEl.nextElementSibling;
+  const isCollapsed = list.classList.contains('collapsed');
+
+  // Collapse all phases first (accordion)
+  document.querySelectorAll('.phase-section .ability-list').forEach(el => {
+    el.classList.add('collapsed');
+    el.previousElementSibling.classList.remove('expanded');
+  });
+
+  // If it was collapsed, expand this one
+  if (isCollapsed) {
+    list.classList.remove('collapsed');
+    headerEl.classList.add('expanded');
+  }
+}
+
+// ─── Navigation ───
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('cpTracker').style.display = id === 'screenSheet' ? 'flex' : 'none';
+}
+
+// ─── CP Tracker ───
+document.getElementById('cpPlus').addEventListener('click', () => {
+  cp++;
+  document.getElementById('cpValue').textContent = cp;
+});
+
+document.getElementById('cpMinus').addEventListener('click', () => {
+  if (cp > 0) cp--;
+  document.getElementById('cpValue').textContent = cp;
+});
+
+// ─── Turn Toggle ───
+document.querySelector('.turn-toggle').addEventListener('click', (e) => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('.turn-toggle button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  renderPhaseSheet(e.target.dataset.turn);
+});
+
+// ─── Main Flow ───
+document.getElementById('btnParse').addEventListener('click', async () => {
+  const text = document.getElementById('armyInput').value.trim();
+  if (!text) return;
+
+  document.getElementById('inputError').innerHTML = '';
+  parsedArmy = parseArmyList(text);
+
+  if (!parsedArmy.faction) {
+    document.getElementById('inputError').innerHTML = '<div class="error-msg">Could not detect faction. Supported factions include: Chaos Knights, Space Marines, Aeldari, Necrons, etc. Check that your export is from the official Warhammer app.</div>';
+    return;
+  }
+  if (!parsedArmy.detachment) {
+    document.getElementById('inputError').innerHTML = `<div class="error-msg">Could not detect detachment for ${parsedArmy.faction}. The app will try to proceed without detachment-specific stratagems.</div>`;
+    // Don't block — proceed without detachment
+    parsedArmy.detachment = 'unknown';
+  }
+  if (parsedArmy.units.length === 0) {
+    document.getElementById('inputError').innerHTML = '<div class="error-msg">No units found. Units should appear as "Unit Name (XXX points)" in the export.</div>';
+    return;
+  }
+
+  // Show loading, fetch data
+  showScreen('screenLoading');
+
+  try {
+    fetchedData = await fetchArmyData(parsedArmy);
+    showLeaderScreen();
+    showScreen('screenLeaders');
+  } catch (e) {
+    console.error('Fetch error:', e);
+    document.getElementById('inputError').innerHTML = `<div class="error-msg">Failed to fetch data: ${e.message}. Check your internet connection.</div>`;
+    showScreen('screenInput');
+  }
+});
+
+document.getElementById('btnGenerate').addEventListener('click', () => {
+  collectAssignments();
+  cp = 0;
+  usedAbilities.clear();
+  document.getElementById('cpValue').textContent = '0';
+  renderDreadPanel();
+  renderPhaseSheet('yours');
+  showScreen('screenSheet');
+});
+
+document.getElementById('btnBack').addEventListener('click', () => {
+  showScreen('screenInput');
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  parsedArmy = null;
+  fetchedData = null;
+  assignments = {};
+  usedAbilities.clear();
+  abilityStates.clear();
+  activeDread.clear();
+  activeSurge.clear();
+  cp = 0;
+  document.getElementById('armyInput').value = '';
+  showScreen('screenInput');
+});
+</script>
+</body>
+</html>

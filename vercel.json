@@ -1,0 +1,22 @@
+{
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "framework": null,
+  "functions": {
+    "api/proxy.py": {
+      "runtime": "python3.12",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/api/proxy", "destination": "/api/proxy" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
+  ]
+}
