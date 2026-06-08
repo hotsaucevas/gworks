@@ -1291,6 +1291,11 @@ function setAbilityState(id, state) {
     el.classList.remove('dimmed', 'highlighted');
     const newState = abilityStates.get(id);
     if (newState) el.classList.add(newState);
+    // Move dimmed items to the bottom of their phase list
+    if (newState === 'dimmed') {
+      const list = el.parentElement;
+      list.appendChild(el);
+    }
   }
 }
 
