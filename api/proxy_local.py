@@ -1,14 +1,20 @@
 """
-Vercel serverless function - proxies and parses 40k.app pages.
-Endpoint: /api/proxy?url=...&type=rules|detachment|unit
+GWorkshop local server — serves the app and proxies requests to 40k.app.
+Extracts content from React Server Component payloads.
+Run: python server.py
+Then open: http://localhost:8080
 """
 
-from http.server import BaseHTTPRequestHandler
+import http.server
 import urllib.request
 import urllib.error
 import json
+import os
 import re
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse, parse_qs
+
+PORT = 8080
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def get_rsc_raw(html):
@@ -391,19 +397,30 @@ def extract_unit(html):
     return json.dumps(result)
 
 
-class handler(BaseHTTPRequestHandler):
+class GWorkshopHandler(http.server.SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=BASE_DIR, **kwargs)
+
     def do_GET(self):
         parsed = urlparse(self.path)
+
+        if parsed.path in ('/proxy', '/api/proxy'):
+            self.handle_proxy(parsed)
+            return
+
+        super().do_GET()
+
+    def handle_proxy(self, parsed):
         params = parse_qs(parsed.query)
         target_url = params.get('url', [None])[0]
-        page_type = params.get('type', ['raw'])[0]
+        page_type = params.get('type', ['raw'])[0]  # 'rules', 'detachment', 'unit', or 'raw'
 
         if not target_url:
-            self._respond(400, {"error": "Missing url parameter"})
+            self.send_error(400, 'Missing url parameter')
             return
 
         if not target_url.startswith('https://www.40k.app/'):
-            self._respond(403, {"error": "Only 40k.app URLs allowed"})
+            self.send_error(403, 'Only 40k.app URLs allowed')
             return
 
         try:
@@ -414,6 +431,7 @@ class handler(BaseHTTPRequestHandler):
             resp = urllib.request.urlopen(req, timeout=15)
             html = resp.read().decode('utf-8', errors='replace')
 
+            # Extract structured content based on page type
             if page_type == 'rules':
                 content = extract_army_rules(html)
             elif page_type == 'detachment':
@@ -422,39 +440,52 @@ class handler(BaseHTTPRequestHandler):
                 content = extract_unit(html)
             else:
                 content = get_rsc_raw(html)
-                self._respond_text(200, content)
-                return
 
-            self._respond_json(200, content)
+            body = content.encode('utf-8')
+            content_type = 'application/json' if page_type in ('rules', 'detachment', 'unit') else 'text/plain'
+
+            self.send_response(200)
+            self.send_header('Content-Type', f'{content_type}; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
 
         except urllib.error.HTTPError as e:
-            self._respond(e.code, {"error": f"Upstream: {e.code} {e.reason}"})
+            error_body = json.dumps({"error": f"Upstream error: {e.code} {e.reason}"}).encode()
+            self.send_response(e.code)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Length', str(len(error_body)))
+            self.end_headers()
+            self.wfile.write(error_body)
         except Exception as e:
-            self._respond(502, {"error": str(e)})
+            error_body = json.dumps({"error": str(e)}).encode()
+            self.send_response(502)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Content-Length', str(len(error_body)))
+            self.end_headers()
+            self.wfile.write(error_body)
 
-    def _respond(self, code, data):
-        body = json.dumps(data).encode()
-        self.send_response(code)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Cache-Control', 'public, max-age=3600')
-        self.end_headers()
-        self.wfile.write(body)
+    def end_headers(self):
+        self.send_header('Cache-Control', 'no-cache')
+        super().end_headers()
 
-    def _respond_json(self, code, content):
-        # content is already a JSON string from the extract functions
-        body = content.encode() if isinstance(content, str) else json.dumps(content).encode()
-        self.send_response(code)
-        self.send_header('Content-Type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Cache-Control', 'public, max-age=3600')
-        self.end_headers()
-        self.wfile.write(body)
+    def log_message(self, format, *args):
+        msg = format % args
+        if '/proxy' in msg:
+            print(f"  [proxy] {msg}")
+        elif not any(x in msg for x in ['.js', '.css', '.ico']):
+            print(f"  {msg}")
 
-    def _respond_text(self, code, text):
-        body = text.encode()
-        self.send_response(code)
-        self.send_header('Content-Type', 'text/plain')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.end_headers()
-        self.wfile.write(body)
+
+if __name__ == '__main__':
+    print(f"\n  GWorkshop server running at http://localhost:{PORT}")
+    print(f"  Press Ctrl+C to stop\n")
+    server = http.server.HTTPServer(('0.0.0.0', PORT), GWorkshopHandler)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\n  Server stopped.")
+        server.shutdown()
