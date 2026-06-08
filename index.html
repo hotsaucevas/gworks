@@ -376,6 +376,12 @@
   <button class="btn btn-primary" id="btnParse">Generate Phase Sheet</button>
   <p class="hint">Export your list from the Warhammer app and paste it above. Abilities are fetched live from 40k.app — any faction, always current.</p>
   <div id="inputError"></div>
+
+  <!-- Saved Lists -->
+  <div id="savedListsSection" style="margin-top:24px;">
+    <div style="font-size:13px; font-weight:600; color:var(--text-muted); margin-bottom:8px;">Saved Lists</div>
+    <div id="savedListsContainer"></div>
+  </div>
 </div>
 
 <!-- Screen 2: Loading -->
@@ -432,6 +438,7 @@
   </div>
   <div id="phaseContent"></div>
   <div class="reset-bar">
+    <button class="btn btn-primary" id="btnSave">Save List</button>
     <button class="btn btn-secondary" id="btnReset">New List</button>
   </div>
 </div>
@@ -541,6 +548,7 @@ async function fetchArmyData(army) {
 // like CHARACTERS, OTHER DATASHEETS, ALLIED UNITS with units + wargear
 function parseArmyList(text) {
   const result = {
+    listName: null,
     faction: null,
     detachment: null,
     units: [],
@@ -587,6 +595,14 @@ function parseArmyList(text) {
   ];
 
   const gameSizes = ['Incursion', 'Strike Force', 'Onslaught', 'Combat Patrol'];
+
+  // Extract list name from first line: "list name (XXXX points)"
+  if (lines.length > 0) {
+    const nameMatch = lines[0].match(/^(.+?)\s*\(\d+\s*points?\)$/i);
+    if (nameMatch) {
+      result.listName = nameMatch[1].trim();
+    }
+  }
 
   // Strategy: scan first few lines for faction match
   const headerText = lines.slice(0, 5).join(' ');
@@ -1404,13 +1420,23 @@ document.getElementById('btnReset').addEventListener('click', () => {
   activeDread.clear();
   activeSurge.clear();
   cp = 0;
-  localStorage.removeItem('gworkshop_save');
+  localStorage.removeItem('gworkshop_active');
   document.getElementById('armyInput').value = '';
+  renderSavedLists();
   showScreen('screenInput');
 });
 
-// ─── Save / Load ───
-function saveState() {
+document.getElementById('btnSave').addEventListener('click', () => {
+  if (!parsedArmy) return;
+  // Get list name from the parsed export (first line before points)
+  const defaultName = parsedArmy.listName || `${parsedArmy.faction} - ${parsedArmy.detachment}`;
+  const name = prompt('Save list as:', defaultName);
+  if (!name) return;
+  saveNamedList(name);
+});
+
+// ─── Named Save / Load System ───
+function getListState() {
   // Capture current tile order per phase
   const tileOrder = {};
   document.querySelectorAll('.phase-section').forEach(section => {
@@ -1420,7 +1446,7 @@ function saveState() {
     }
   });
 
-  const state = {
+  return {
     parsedArmy,
     fetchedData,
     assignments,
@@ -1432,15 +1458,23 @@ function saveState() {
     tileOrder,
     activeTurn: document.querySelector('.turn-toggle button.active')?.dataset.turn || 'yours'
   };
-  localStorage.setItem('gworkshop_save', JSON.stringify(state));
 }
 
-function loadState() {
-  const saved = localStorage.getItem('gworkshop_save');
-  if (!saved) return false;
+function saveNamedList(name) {
+  const lists = JSON.parse(localStorage.getItem('gworkshop_lists') || '{}');
+  lists[name] = getListState();
+  localStorage.setItem('gworkshop_lists', JSON.stringify(lists));
+  // Also set as active
+  localStorage.setItem('gworkshop_active', name);
+  renderSavedLists();
+}
+
+function loadNamedList(name) {
+  const lists = JSON.parse(localStorage.getItem('gworkshop_lists') || '{}');
+  const state = lists[name];
+  if (!state) return false;
 
   try {
-    const state = JSON.parse(saved);
     parsedArmy = state.parsedArmy;
     fetchedData = state.fetchedData;
     assignments = state.assignments || {};
@@ -1450,17 +1484,15 @@ function loadState() {
     activeDread = new Set(state.activeDread || []);
     activeSurge = new Set(state.activeSurge || []);
 
-    // Restore UI
     document.getElementById('cpValue').textContent = cp;
     renderDreadPanel();
     renderPhaseSheet(state.activeTurn || 'yours');
 
-    // Set turn toggle
     document.querySelectorAll('.turn-toggle button').forEach(b => {
       b.classList.toggle('active', b.dataset.turn === (state.activeTurn || 'yours'));
     });
 
-    // Restore tile order after render
+    // Restore tile order
     if (state.tileOrder) {
       setTimeout(() => {
         document.querySelectorAll('.phase-section').forEach(section => {
@@ -1477,24 +1509,65 @@ function loadState() {
       }, 50);
     }
 
+    localStorage.setItem('gworkshop_active', name);
     showScreen('screenSheet');
     return true;
   } catch (e) {
-    console.warn('Failed to load saved state:', e);
-    localStorage.removeItem('gworkshop_save');
+    console.warn('Failed to load list:', e);
     return false;
   }
 }
 
-// Auto-save whenever phase sheet is visible and user interacts
+function deleteNamedList(name) {
+  const lists = JSON.parse(localStorage.getItem('gworkshop_lists') || '{}');
+  delete lists[name];
+  localStorage.setItem('gworkshop_lists', JSON.stringify(lists));
+  if (localStorage.getItem('gworkshop_active') === name) {
+    localStorage.removeItem('gworkshop_active');
+  }
+  renderSavedLists();
+}
+
+function renderSavedLists() {
+  const container = document.getElementById('savedListsContainer');
+  const lists = JSON.parse(localStorage.getItem('gworkshop_lists') || '{}');
+  const names = Object.keys(lists);
+
+  if (names.length === 0) {
+    container.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">No saved lists yet.</p>';
+    return;
+  }
+
+  container.innerHTML = names.map(name => {
+    const state = lists[name];
+    const faction = state.parsedArmy?.faction || '';
+    const detachment = state.parsedArmy?.detachment || '';
+    return `
+      <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:8px;">
+        <div style="flex:1; cursor:pointer;" onclick="loadNamedList('${name.replace(/'/g, "\\'")}')">
+          <div style="font-size:14px; font-weight:600; color:var(--text);">${name}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${faction} — ${detachment}</div>
+        </div>
+        <button onclick="event.stopPropagation(); deleteNamedList('${name.replace(/'/g, "\\'")}')" style="background:none; border:none; color:var(--cp2); font-size:18px; cursor:pointer; padding:4px 8px;">✕</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// Auto-save active list on interactions
 document.addEventListener('click', () => {
-  if (document.getElementById('screenSheet').classList.contains('active')) {
-    saveState();
+  const activeName = localStorage.getItem('gworkshop_active');
+  if (activeName && document.getElementById('screenSheet').classList.contains('active')) {
+    saveNamedList(activeName);
   }
 });
 
-// Try loading saved state on startup
-if (!loadState()) {
+// On startup: try to load the last active list, otherwise show input
+const activeName = localStorage.getItem('gworkshop_active');
+if (activeName && loadNamedList(activeName)) {
+  // loaded successfully
+} else {
+  renderSavedLists();
   showScreen('screenInput');
 }
 </script>
