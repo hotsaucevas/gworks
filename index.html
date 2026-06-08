@@ -817,9 +817,11 @@ function renderDreadPanel() {
     const togglesEl = document.getElementById('detRuleToggles');
 
     // Check if this is Malefic Surge (interactive) or generic (static text)
-    if (fetchedData.detachment.rule.name === 'Malefic Surge') {
+    if (fetchedData.detachment.rule.name.includes('Malefic Surge')) {
       introEl.textContent = MALEFIC_SURGE.intro;
       togglesEl.innerHTML = '';
+      // Make sure the panel body is visible for interactive use
+      document.querySelector('#detachmentRulePanel .det-body').classList.remove('collapsed');
       MALEFIC_SURGE.abilities.forEach(ab => {
         const checked = activeSurge.has(ab.id) ? 'checked' : '';
         togglesEl.innerHTML += `
@@ -967,7 +969,7 @@ function generatePhaseSheet(turn) {
 
   // 2. Detachment Rule
   if (fetchedData.detachment?.rule?.name) {
-    if (fetchedData.detachment.rule.name === 'Malefic Surge') {
+    if (fetchedData.detachment.rule.name.includes('Malefic Surge')) {
       // Command phase reminder only
       addAbility({
         name: 'Malefic Surge',
@@ -1322,13 +1324,6 @@ document.getElementById('btnParse').addEventListener('click', async () => {
 
   try {
     fetchedData = await fetchArmyData(parsedArmy);
-    console.log('fetchedData:', JSON.stringify({
-      armyRule: fetchedData.armyRule?.name,
-      detRule: fetchedData.detachment?.rule?.name,
-      strats: fetchedData.detachment?.stratagems?.length,
-      units: Object.keys(fetchedData.units || {}),
-      abilities: Object.entries(fetchedData.units || {}).map(([k,v]) => `${k}: ${v.abilities?.length || 0}`)
-    }, null, 2));
     showLeaderScreen();
     showScreen('screenLeaders');
   } catch (e) {
