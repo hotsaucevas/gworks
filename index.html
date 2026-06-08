@@ -204,6 +204,7 @@
     .phase-section .phase-header.expanded { border-radius: 8px 8px 0 0; }
 
     .phase-command .phase-header { background: color-mix(in srgb, var(--phase-command) 20%, transparent); color: var(--phase-command); }
+    .phase-battle-round .phase-header { background: color-mix(in srgb, #b060e0 20%, transparent); color: #b060e0; }
     .phase-movement .phase-header { background: color-mix(in srgb, var(--phase-movement) 20%, transparent); color: var(--phase-movement); }
     .phase-shooting .phase-header { background: color-mix(in srgb, var(--phase-shooting) 20%, transparent); color: var(--phase-shooting); }
     .phase-charge .phase-header { background: color-mix(in srgb, var(--phase-charge) 20%, transparent); color: var(--phase-charge); }
@@ -743,6 +744,7 @@ function collectAssignments() {
 function classifyPhase(desc) {
   const d = (desc || '').toLowerCase();
   const phases = [];
+  if (/\b(start|beginning) of (the |each |your )?battle round\b/.test(d)) phases.push('battle-round');
   if (d.includes('command phase')) phases.push('command');
   if (d.includes('movement phase') || d.includes('advance roll')) phases.push('movement');
   if (d.includes('shooting phase') || d.includes('ranged attack')) phases.push('shooting');
@@ -926,7 +928,7 @@ const CORE_STRATAGEMS = [
 
 // ─── Phase Sheet Generation ───
 function generatePhaseSheet(turn) {
-  const phases = ['command', 'movement', 'shooting', 'charge', 'fight', 'end'];
+  const phases = ['battle-round', 'command', 'movement', 'shooting', 'charge', 'fight', 'end'];
   const phaseAbilities = {};
   phases.forEach(p => phaseAbilities[p] = []);
 
@@ -1115,7 +1117,7 @@ function renderPhaseSheet(turn) {
     const section = document.createElement('div');
     section.className = `phase-section phase-${phase}`;
     section.innerHTML = `
-      <div class="phase-header" onclick="togglePhase(this)" data-phase="${phase}">${phase} Phase<span class="phase-caret">▾</span></div>
+      <div class="phase-header" onclick="togglePhase(this)" data-phase="${phase}">${phase === 'battle-round' ? 'Start of Battle Round' : phase + ' Phase'}<span class="phase-caret">▾</span></div>
       <div class="ability-list collapsed">
         ${combined.map((ab, i) => {
           const id = `${turn}-${phase}-${i}`;
