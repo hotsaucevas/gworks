@@ -1404,9 +1404,99 @@ document.getElementById('btnReset').addEventListener('click', () => {
   activeDread.clear();
   activeSurge.clear();
   cp = 0;
+  localStorage.removeItem('gworkshop_save');
   document.getElementById('armyInput').value = '';
   showScreen('screenInput');
 });
+
+// ─── Save / Load ───
+function saveState() {
+  // Capture current tile order per phase
+  const tileOrder = {};
+  document.querySelectorAll('.phase-section').forEach(section => {
+    const phase = section.querySelector('.phase-header')?.dataset.phase;
+    if (phase) {
+      tileOrder[phase] = [...section.querySelectorAll('.ability-item')].map(el => el.dataset.id);
+    }
+  });
+
+  const state = {
+    parsedArmy,
+    fetchedData,
+    assignments,
+    cp,
+    usedAbilities: [...usedAbilities],
+    abilityStates: [...abilityStates.entries()],
+    activeDread: [...activeDread],
+    activeSurge: [...activeSurge],
+    tileOrder,
+    activeTurn: document.querySelector('.turn-toggle button.active')?.dataset.turn || 'yours'
+  };
+  localStorage.setItem('gworkshop_save', JSON.stringify(state));
+}
+
+function loadState() {
+  const saved = localStorage.getItem('gworkshop_save');
+  if (!saved) return false;
+
+  try {
+    const state = JSON.parse(saved);
+    parsedArmy = state.parsedArmy;
+    fetchedData = state.fetchedData;
+    assignments = state.assignments || {};
+    cp = state.cp || 0;
+    usedAbilities = new Set(state.usedAbilities || []);
+    abilityStates = new Map(state.abilityStates || []);
+    activeDread = new Set(state.activeDread || []);
+    activeSurge = new Set(state.activeSurge || []);
+
+    // Restore UI
+    document.getElementById('cpValue').textContent = cp;
+    renderDreadPanel();
+    renderPhaseSheet(state.activeTurn || 'yours');
+
+    // Set turn toggle
+    document.querySelectorAll('.turn-toggle button').forEach(b => {
+      b.classList.toggle('active', b.dataset.turn === (state.activeTurn || 'yours'));
+    });
+
+    // Restore tile order after render
+    if (state.tileOrder) {
+      setTimeout(() => {
+        document.querySelectorAll('.phase-section').forEach(section => {
+          const phase = section.querySelector('.phase-header')?.dataset.phase;
+          const list = section.querySelector('.ability-list');
+          const order = state.tileOrder[phase];
+          if (order && list) {
+            order.forEach(id => {
+              const el = list.querySelector(`[data-id="${id}"]`);
+              if (el) list.appendChild(el);
+            });
+          }
+        });
+      }, 50);
+    }
+
+    showScreen('screenSheet');
+    return true;
+  } catch (e) {
+    console.warn('Failed to load saved state:', e);
+    localStorage.removeItem('gworkshop_save');
+    return false;
+  }
+}
+
+// Auto-save whenever phase sheet is visible and user interacts
+document.addEventListener('click', () => {
+  if (document.getElementById('screenSheet').classList.contains('active')) {
+    saveState();
+  }
+});
+
+// Try loading saved state on startup
+if (!loadState()) {
+  showScreen('screenInput');
+}
 </script>
 </body>
 </html>
