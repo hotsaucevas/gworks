@@ -1158,6 +1158,7 @@ function renderPhaseSheet(turn) {
                 <span class="ability-actions">
                   <button onclick="event.stopPropagation(); setAbilityState('${id}','highlighted')" title="Highlight">💡</button>
                   <button onclick="event.stopPropagation(); setAbilityState('${id}','dimmed')" title="Dim">✕</button>
+                  <button onclick="event.stopPropagation(); dimAbilityGlobal('${ab.name}','${ab.source}')" title="Dim everywhere">✕✕</button>
                 </span>
               </div>
               <div class="ability-desc">${ab.description.replace(/\n/g, '<br>')}</div>
@@ -1316,6 +1317,23 @@ function setAbilityState(id, state) {
       list.appendChild(el);
     }
   }
+}
+
+function dimAbilityGlobal(abilityName, source) {
+  // Dim all tiles with the same ability name + source across all phases
+  document.querySelectorAll('.ability-item').forEach(el => {
+    const id = el.dataset.id;
+    // Match by checking the rendered name and source text
+    const nameEl = el.querySelector('.ability-name');
+    const sourceEl = el.querySelector('.ability-source');
+    if (nameEl && sourceEl && nameEl.textContent === abilityName && sourceEl.textContent === source) {
+      abilityStates.set(id, 'dimmed');
+      el.classList.remove('highlighted');
+      el.classList.add('dimmed');
+      const list = el.parentElement;
+      list.appendChild(el);
+    }
+  });
 }
 
 function togglePhase(headerEl) {
