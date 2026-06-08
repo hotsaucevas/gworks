@@ -267,15 +267,20 @@
       cursor: pointer;
       place-items: center;
       margin-left: auto;
+      flex-shrink: 0;
+      align-self: center;
+      padding: 4px;
     }
     .ability-item.highlighted { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
 
     .ability-actions {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      margin-left: auto;
+      gap: 2px;
       flex-shrink: 0;
+      padding: 4px;
+      border-left: 1px solid var(--border);
+      margin-left: auto;
     }
 
     .ability-actions button {
@@ -293,6 +298,16 @@
     }
 
     .ability-actions button:active { opacity: 0.7; }
+
+    .ability-layout {
+      display: flex;
+      align-items: stretch;
+    }
+
+    .ability-content {
+      flex: 1;
+      min-width: 0;
+    }
 
     .ability-meta {
       display: flex;
@@ -1170,21 +1185,25 @@ function renderPhaseSheet(turn) {
           const onceTag = isOncePerBattle ? '<span class="once-badge">ONCE</span>' : '';
           return `
             <div class="ability-item ${isUsed ? 'used' : ''} ${stateClass}" data-id="${id}" draggable="true" ${onceAttr}>
-              <div class="ability-meta">
-                <span class="drag-handle">⠿</span>
-                <span class="ability-name">${ab._merged ? ab.source : ab.name}</span>
-                ${onceTag}
-                ${costHtml}
-                <span class="ability-source">${ab.source}</span>
-                <span class="ability-actions">
+              <div class="ability-layout">
+                <div class="ability-content">
+                  <div class="ability-meta">
+                    <span class="drag-handle">⠿</span>
+                    <span class="ability-name">${ab._merged ? ab.source : ab.name}</span>
+                    ${onceTag}
+                    ${costHtml}
+                    <span class="ability-source">${ab.source}</span>
+                  </div>
+                  <div class="ability-desc">${ab.description.replace(/\n/g, '<br>')}</div>
+                  ${ab.unitName ? `<div class="ability-unit">↳ ${ab.unitName}</div>` : ''}
+                </div>
+                <div class="ability-actions">
                   <button onclick="event.stopPropagation(); setAbilityState('${id}','highlighted')" title="Highlight">💡</button>
                   <button onclick="event.stopPropagation(); setAbilityState('${id}','dimmed')" title="Dim">✕</button>
                   <button onclick="event.stopPropagation(); dimAbilityGlobal('${ab.name}','${ab.source}')" title="Dim everywhere">✕✕</button>
-                </span>
+                </div>
                 <button class="undim-btn" onclick="event.stopPropagation(); setAbilityState('${id}','none')" title="Restore">🔆</button>
               </div>
-              <div class="ability-desc">${ab.description.replace(/\n/g, '<br>')}</div>
-              ${ab.unitName ? `<div class="ability-unit">↳ ${ab.unitName}</div>` : ''}
             </div>
           `;
         }).join('')}
