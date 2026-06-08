@@ -465,7 +465,8 @@ function factionSlug(name) {
 
 // ─── Unit slug from name ───
 function unitSlug(name) {
-  return name.toLowerCase().replace(/['''\u2018\u2019\u02BC]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  // Strip all apostrophe variants, then slugify
+  return name.toLowerCase().replace(/[\u0027\u2018\u2019\u02BC\u0060\u00B4]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
 // ─── Detachment slug ───
