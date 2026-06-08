@@ -246,15 +246,28 @@
 
     .ability-item:last-child { border-bottom: none; }
     .ability-item.used { opacity: 0.35; text-decoration: line-through; }
-    .ability-item.dimmed { opacity: 0.4; }
+    .ability-item.dimmed {
+      opacity: 0.4;
+      display: inline-flex;
+      padding: 4px 8px;
+      border-bottom: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 2px;
+      vertical-align: top;
+    }
     .ability-item.dimmed .ability-desc,
     .ability-item.dimmed .ability-unit,
     .ability-item.dimmed .ability-actions,
     .ability-item.dimmed .drag-handle,
     .ability-item.dimmed .ability-cost,
-    .ability-item.dimmed .ability-source { display: none; }
+    .ability-item.dimmed .ability-source,
+    .ability-item.dimmed .ability-content .ability-desc,
+    .ability-item.dimmed .ability-content .ability-unit { display: none; }
     .ability-item.dimmed .ability-meta { margin-bottom: 0; }
-    .ability-item.dimmed .undim-btn { display: inline-grid; }
+    .ability-item.dimmed .ability-layout { align-items: center; }
+    .ability-item.dimmed .ability-name { font-size: 11px; }
+    .ability-item.dimmed .undim-btn { display: inline-grid; width: 22px; height: 22px; font-size: 12px; }
     .undim-btn {
       display: none;
       width: 28px;
@@ -271,6 +284,9 @@
       align-self: center;
       padding: 4px;
     }
+    .ability-list { display: flex; flex-direction: row; flex-wrap: wrap; }
+    .ability-item { width: 100%; }
+    .ability-item.dimmed { width: auto; }
     .ability-item.highlighted { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
 
     .ability-actions {
