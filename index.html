@@ -189,11 +189,14 @@
       user-select: none;
     }
 
-    .phase-header .phase-count {
+    .phase-header .phase-caret {
       margin-left: auto;
-      font-size: 11px;
-      opacity: 0.6;
-      font-weight: 400;
+      font-size: 14px;
+      transition: transform 0.2s;
+    }
+
+    .phase-header.expanded .phase-caret {
+      transform: rotate(180deg);
     }
 
     .phase-section .ability-list.collapsed { display: none; }
@@ -1092,15 +1095,16 @@ function renderPhaseSheet(turn) {
     const section = document.createElement('div');
     section.className = `phase-section phase-${phase}`;
     section.innerHTML = `
-      <div class="phase-header" onclick="togglePhase(this)" data-phase="${phase}">${phase} Phase<span class="phase-count">${abilities.length}</span></div>
+      <div class="phase-header" onclick="togglePhase(this)" data-phase="${phase}">${phase} Phase<span class="phase-caret">▾</span></div>
       <div class="ability-list collapsed">
         ${abilities.map((ab, i) => {
           const id = `${turn}-${phase}-${i}`;
           const isUsed = usedAbilities.has(id);
           const dimState = abilityStates.get(id);
           const stateClass = dimState === 'dimmed' ? 'dimmed' : dimState === 'highlighted' ? 'highlighted' : '';
-          const costClass = ab.cost === 0 ? 'cost-free' : ab.cost === 1 ? 'cost-1' : 'cost-2';
-          const costLabel = ab.cost === 0 ? 'FREE' : `${ab.cost}CP`;
+          const costClass = ab.cost === 0 ? '' : ab.cost === 1 ? 'cost-1' : 'cost-2';
+          const costLabel = ab.cost === 0 ? '' : `${ab.cost}CP`;
+          const costHtml = costLabel ? `<span class="ability-cost ${costClass}">${costLabel}</span>` : '';
           const isOncePerBattle = /once per battle(?!\s*round)/i.test(ab.description);
           const onceAttr = isOncePerBattle ? `onclick="toggleAbility('${id}')"` : '';
           const onceTag = isOncePerBattle ? '<span class="once-badge">ONCE</span>' : '';
@@ -1110,7 +1114,7 @@ function renderPhaseSheet(turn) {
                 <span class="drag-handle">⠿</span>
                 <span class="ability-name">${ab.name}</span>
                 ${onceTag}
-                <span class="ability-cost ${costClass}">${costLabel}</span>
+                ${costHtml}
                 <span class="ability-source">${ab.source}</span>
                 <span class="ability-actions">
                   <button onclick="event.stopPropagation(); setAbilityState('${id}','highlighted')" title="Highlight">★</button>
