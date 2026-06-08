@@ -246,7 +246,28 @@
 
     .ability-item:last-child { border-bottom: none; }
     .ability-item.used { opacity: 0.35; text-decoration: line-through; }
-    .ability-item.dimmed { opacity: 0.25; }
+    .ability-item.dimmed { opacity: 0.4; }
+    .ability-item.dimmed .ability-desc,
+    .ability-item.dimmed .ability-unit,
+    .ability-item.dimmed .ability-actions,
+    .ability-item.dimmed .drag-handle,
+    .ability-item.dimmed .ability-cost,
+    .ability-item.dimmed .ability-source { display: none; }
+    .ability-item.dimmed .ability-meta { margin-bottom: 0; }
+    .ability-item.dimmed .undim-btn { display: inline-grid; }
+    .undim-btn {
+      display: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      place-items: center;
+      margin-left: auto;
+    }
     .ability-item.highlighted { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
 
     .ability-actions {
@@ -1160,6 +1181,7 @@ function renderPhaseSheet(turn) {
                   <button onclick="event.stopPropagation(); setAbilityState('${id}','dimmed')" title="Dim">✕</button>
                   <button onclick="event.stopPropagation(); dimAbilityGlobal('${ab.name}','${ab.source}')" title="Dim everywhere">✕✕</button>
                 </span>
+                <button class="undim-btn" onclick="event.stopPropagation(); setAbilityState('${id}','none')" title="Restore">🔆</button>
               </div>
               <div class="ability-desc">${ab.description.replace(/\n/g, '<br>')}</div>
               ${ab.unitName ? `<div class="ability-unit">↳ ${ab.unitName}</div>` : ''}
@@ -1300,8 +1322,8 @@ function toggleAbility(id) {
 
 function setAbilityState(id, state) {
   const current = abilityStates.get(id);
-  if (current === state) {
-    // Toggle off if same button pressed again
+  if (current === state || state === 'none') {
+    // Toggle off or explicit clear
     abilityStates.delete(id);
   } else {
     abilityStates.set(id, state);
