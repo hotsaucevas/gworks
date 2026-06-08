@@ -1071,7 +1071,23 @@ function renderPhaseSheet(turn) {
     const abilities = phaseAbilities[phase];
     if (abilities.length === 0) return;
 
-    abilities.sort((a, b) => triggerOrder.indexOf(a.trigger) - triggerOrder.indexOf(b.trigger));
+    abilities.sort((a, b) => {
+      // Primary sort: by source group
+      const sourceOrder = ['Army Rule', 'Dread Ability', 'Detachment Rule', 'Malefic Surge', 'Stratagem', 'Enhancement', 'Core'];
+      const getSourceGroup = (source) => {
+        const idx = sourceOrder.indexOf(source);
+        if (idx >= 0) return idx;
+        // Unit-specific abilities (source is a unit name) go between Stratagem and Core
+        return 5.5;
+      };
+      const groupA = getSourceGroup(a.source);
+      const groupB = getSourceGroup(b.source);
+      if (groupA !== groupB) return groupA - groupB;
+      // Secondary sort: by source name (groups unit abilities together)
+      if (a.source !== b.source) return a.source.localeCompare(b.source);
+      // Tertiary: by trigger timing
+      return triggerOrder.indexOf(a.trigger) - triggerOrder.indexOf(b.trigger);
+    });
 
     const section = document.createElement('div');
     section.className = `phase-section phase-${phase}`;
