@@ -1141,38 +1141,12 @@ function renderPhaseSheet(turn) {
       return triggerOrder.indexOf(a.trigger) - triggerOrder.indexOf(b.trigger);
     });
 
-    // Combine abilities from the same unit into single tiles
-    const combined = [];
-    for (let i = 0; i < abilities.length; i++) {
-      const ab = abilities[i];
-      // Check if previous entry is same unit source (not stratagems/core/army rule)
-      const isUnitAbility = !['Army Rule', 'Dread Ability', 'Detachment Rule', 'Malefic Surge', 'Stratagem', 'Enhancement', 'Core'].includes(ab.source);
-      if (isUnitAbility && combined.length > 0) {
-        const prev = combined[combined.length - 1];
-        if (prev.source === ab.source && prev.unitName === ab.unitName) {
-          // Merge into previous
-          prev.name += ` + ${ab.name}`;
-          prev.description += `\n• ${ab.name}: ${ab.description}`;
-          prev._merged = true;
-          continue;
-        }
-      }
-      // For first unit ability in a group, prefix description with name if it'll be merged
-      const next = abilities[i + 1];
-      const willMerge = isUnitAbility && next && next.source === ab.source && next.unitName === ab.unitName;
-      if (willMerge) {
-        combined.push({ ...ab, description: `• ${ab.name}: ${ab.description}`, _merged: true });
-      } else {
-        combined.push({ ...ab });
-      }
-    }
-
     const section = document.createElement('div');
     section.className = `phase-section phase-${phase}`;
     section.innerHTML = `
       <div class="phase-header" onclick="togglePhase(this)" data-phase="${phase}">${phase === 'battle-round' ? 'Start of Battle Round' : phase + ' Phase'}<span class="phase-caret">▾</span></div>
       <div class="ability-list collapsed">
-        ${combined.map((ab, i) => {
+        ${abilities.map((ab, i) => {
           const id = `${turn}-${phase}-${i}`;
           const isUsed = usedAbilities.has(id);
           const dimState = abilityStates.get(id);
@@ -1189,7 +1163,7 @@ function renderPhaseSheet(turn) {
                 <div class="ability-content">
                   <div class="ability-meta">
                     <span class="drag-handle">⠿</span>
-                    <span class="ability-name">${ab._merged ? ab.source : ab.name}</span>
+                    <span class="ability-name">${ab.name}</span>
                     ${onceTag}
                     ${costHtml}
                     <span class="ability-source">${ab.source}</span>
