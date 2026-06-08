@@ -1322,6 +1322,13 @@ document.getElementById('btnParse').addEventListener('click', async () => {
 
   try {
     fetchedData = await fetchArmyData(parsedArmy);
+    console.log('fetchedData:', JSON.stringify({
+      armyRule: fetchedData.armyRule?.name,
+      detRule: fetchedData.detachment?.rule?.name,
+      strats: fetchedData.detachment?.stratagems?.length,
+      units: Object.keys(fetchedData.units || {}),
+      abilities: Object.entries(fetchedData.units || {}).map(([k,v]) => `${k}: ${v.abilities?.length || 0}`)
+    }, null, 2));
     showLeaderScreen();
     showScreen('screenLeaders');
   } catch (e) {
