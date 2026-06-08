@@ -319,10 +319,11 @@ def extract_unit(html):
             if children_idx >= 0:
                 after_children = block[children_idx + 11:].lstrip()
                 if after_children.startswith('"'):
-                    # Simple string: "children":"text here"
-                    end_quote = after_children.find('"', 1)
-                    if end_quote > 0:
-                        desc = after_children[1:end_quote]
+                    # Simple string: "children":"text here"}
+                    # Find the closing "} pattern (not just any quote, since text may contain inch marks)
+                    end_match = re.search(r'"\}', after_children[1:])
+                    if end_match:
+                        desc = after_children[1:end_match.start() + 1]
                 elif after_children.startswith('['):
                     # Array: need to find matching ] accounting for nesting
                     depth = 0
