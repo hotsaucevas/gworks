@@ -28,71 +28,60 @@ def get_rsc_raw(html):
 
 
 def extract_army_rules(html):
-    """Extract army rules page content."""
+    """Extract army rules page content using structured RSC data."""
     raw = get_rsc_raw(html)
     if not raw:
         return json.dumps({"error": "No RSC content found"})
 
-    result = {"army_rule": {"name": "", "description": ""}, "extra_rules": []}
+    result = {"army_rule": {"name": "", "description": ""}}
 
-    # Find the main army rule name and description
-    # Pattern: section title followed by card content
-    # Army rule name comes from children of section title pattern
-    name_match = re.search(r'SectionTitle.*?children":"([^"]+)".*?Card_card', raw, re.DOTALL)
+    # Strategy: find rules with "name" and "containers" containing "textContent" fields
+    # These are the actual gameplay rules (vs list-building rules like "Daemonic Pact")
+    # The main army rule typically has an armyRuleId and multiple text containers
 
-    # Better: look for the first large paragraph block
-    paragraphs = re.findall(r'"p","p-\d+",\{"children":\[?"(.*?)"', raw)
-    if not paragraphs:
-        paragraphs = re.findall(r'"p","p-\d+",\{"children":"([^"]+)"', raw)
+    # Find all named rules that have containers with textContent
+    rules = []
+    for match in re.finditer(r'"name":"([^"]{3,60})","containers":\[(.*?)\]', raw, re.DOTALL):
+        name = match.group(1)
+        containers_block = match.group(2)
 
-    # Get rule name from Abilities_ability__name or first meaningful section title
-    ability_names = re.findall(r'Abilities_ability__name[^"]*","children":"([^"]+)"', raw)
-    section_titles = re.findall(r'Table_header__title[^"]*","children":"([^"]+)"', raw)
+        # Extract textContent from containers
+        texts = re.findall(r'"textContent":"((?:[^"\\]|\\.)*)"', containers_block)
+        if texts:
+            # Clean up text
+            combined = '\n'.join(t.replace('\\n', '\n').replace('**', '') for t in texts)
+            rules.append({"name": name, "description": combined})
 
-    # For army rules, the first big text block is typically the army rule description
-    # Find all p-tag content
-    all_p = []
-    for match in re.finditer(r'"p","p-\d+",\{"children":(.*?)\}\]', raw):
-        content = match.group(1)
-        # Extract text from children (could be string or array)
-        if content.startswith('"'):
-            # Simple string
-            text = content.strip('"')
-            all_p.append(text)
-        elif content.startswith('['):
-            # Array of mixed content
-            pieces = re.findall(r'"([^"]{2,})"', content)
-            text = ''.join(p for p in pieces if not p.startswith('$') and not p.startswith('strong') and not p.startswith('children') and 'className' not in p and not p.startswith('p-'))
-            if text:
-                all_p.append(text)
+    # Pick the best rule: prefer the one with armyRuleId (not list-building rules)
+    # Skip rules that are clearly list-building (mentions "points" costs or "Select Army Faction")
+    gameplay_rules = []
+    for rule in rules:
+        desc_lower = rule["description"].lower()
+        if 'select army faction' in desc_lower and 'pts' in desc_lower:
+            continue  # List-building rule, skip
+        if 'can include' in desc_lower and 'even if they do not have the faction keyword' in desc_lower:
+            continue  # Allied detachment rule, skip
+        gameplay_rules.append(rule)
 
-    # Also get list items
-    list_items = re.findall(r'"li","li-\d+",\{"children":"([^"]+)"', raw)
+    if gameplay_rules:
+        # Use the last gameplay rule (usually the actual army rule, after pact-type rules)
+        best = gameplay_rules[-1] if len(gameplay_rules) > 1 else gameplay_rules[0]
+        result["army_rule"] = best
+    elif rules:
+        # Fallback to any rule found
+        result["army_rule"] = rules[-1]
 
-    # Build the army rule
-    if all_p:
-        result["army_rule"]["description"] = ' '.join(all_p[:3])
-
-    # Find dread ability names/descriptions (numbered items)
-    dread_items = re.findall(r'(\d+\s*-\s*[^"]+)', raw)
-    for item in dread_items:
-        result["extra_rules"].append(item)
-
-    # Get the name from section titles or ability names
-    # For Chaos Knights, it's "Harbingers of Dread"
-    for title in section_titles:
-        if title not in ('Unit Abilities', 'Core Abilities', 'Faction Abilities', 'Keywords', 'Costs'):
-            result["army_rule"]["name"] = title
-            break
-
-    if not result["army_rule"]["name"] and ability_names:
-        result["army_rule"]["name"] = ability_names[0]
-
-    # Fallback: search for known patterns
+    # If no structured rules found, try the old approach
     if not result["army_rule"]["name"]:
-        name_search = re.search(r'"children":"(Harbingers of Dread|Oath of Moment|For the Greater Good|Synapse|Code of Honour|Waaagh!|Shadow in the Warp|Contagion|Strands of Fate)', raw)
-        if name_search:
-            result["army_rule"]["name"] = name_search.group(1)
+        # Look for section titles
+        section_titles = re.findall(r'Table_header__title[^"]*","children":"([^"]+)"', raw)
+        ability_names = re.findall(r'Abilities_ability__name[^"]*","children":"([^"]+)"', raw)
+        for title in section_titles:
+            if title not in ('Unit Abilities', 'Core Abilities', 'Faction Abilities', 'Keywords', 'Costs'):
+                result["army_rule"]["name"] = title
+                break
+        if not result["army_rule"]["name"] and ability_names:
+            result["army_rule"]["name"] = ability_names[0]
 
     return json.dumps(result)
 
