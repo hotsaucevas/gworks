@@ -17,12 +17,8 @@ def get_rsc_raw(html):
     if not pushes:
         return ''
     raw = ''.join(pushes)
-    # Unescape JS string escapes, but keep \" as a special marker
-    # The content uses \" for literal quotes (like inch marks: 9\")
     raw = raw.replace('\\n', '\n')
     raw = raw.replace('\\\\', '\\')
-    # Replace \" with " but track that some are inside content (like 9\")
-    # We do the unescape but use a regex that can handle embedded quotes
     raw = raw.replace('\\"', '"')
     return raw
 
@@ -319,9 +315,10 @@ def extract_unit(html):
             if children_idx >= 0:
                 after_children = block[children_idx + 11:].lstrip()
                 if after_children.startswith('"'):
-                    # Simple string: "children":"text here"}
-                    # Find the closing "} pattern (not just any quote, since text may contain inch marks)
-                    end_match = re.search(r'"\}', after_children[1:])
+                    # Simple string: "children":"text here"}]
+                    # The text may contain " (inch marks). Find the actual end by
+                    # looking for "}] which closes the p-tag
+                    end_match = re.search(r'"\}\]', after_children[1:])
                     if end_match:
                         desc = after_children[1:end_match.start() + 1]
                 elif after_children.startswith('['):
