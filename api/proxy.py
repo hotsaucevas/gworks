@@ -375,6 +375,15 @@ def extract_unit(html):
     if dmg_match:
         result["damaged"] = dmg_match.group(1)
 
+    # Extract leader targets (can_lead)
+    # Pattern: "This model can be attached to the following unit:" then <li> with <strong> unit names
+    attach_idx = raw.find('This model can be attached to the following unit')
+    if attach_idx > 0:
+        attach_region = raw[attach_idx:attach_idx + 1000]
+        lead_targets = re.findall(r'"strong","strong-\d+",\{"children":"([^"]+)"\}', attach_region)
+        if lead_targets:
+            result["can_lead"] = [t.title() for t in lead_targets]
+
     return json.dumps(result)
 
 

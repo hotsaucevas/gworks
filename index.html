@@ -755,9 +755,16 @@ function showLeaderScreen() {
   container.innerHTML = '';
 
   const unitNames = parsedArmy.units.map(u => u.name);
+
+  // Find leaders that have can_lead data and valid targets in this list
   const leaders = parsedArmy.units.filter(u => {
     const unitData = fetchedData.units[u.name];
-    return unitData && unitData.keywords.some(k => k.toUpperCase() === 'CHARACTER');
+    if (!unitData || !unitData.can_lead || unitData.can_lead.length === 0) return false;
+    // Check if any of their leadable units are in the army
+    const hasTarget = unitData.can_lead.some(target =>
+      unitNames.some(name => name.toLowerCase() === target.toLowerCase())
+    );
+    return hasTarget;
   });
 
   if (leaders.length === 0) {
@@ -765,22 +772,28 @@ function showLeaderScreen() {
     return;
   }
 
-  const nonCharacters = parsedArmy.units.filter(u => {
-    const unitData = fetchedData.units[u.name];
-    return !unitData || !unitData.keywords.some(k => k.toUpperCase() === 'CHARACTER');
-  });
-
   leaders.forEach(leader => {
+    const unitData = fetchedData.units[leader.name];
+    // Only show units this leader can actually attach to that are in the army
+    const validTargets = unitData.can_lead.filter(target =>
+      unitNames.some(name => name.toLowerCase() === target.toLowerCase())
+    );
+
     const card = document.createElement('div');
     card.className = 'assignment-card';
     card.innerHTML = `
       <h3>${leader.name}</h3>
       <select data-leader="${leader.name}">
         <option value="">Unattached</option>
-        ${nonCharacters.map(t => `<option value="${t.name}">${t.name}</option>`).join('')}
+        ${validTargets.map(t => `<option value="${t}">${t}</option>`).join('')}
       </select>
     `;
     container.appendChild(card);
+
+    // Auto-select if only one valid target
+    if (validTargets.length === 1) {
+      card.querySelector('select').value = validTargets[0];
+    }
   });
 }
 
