@@ -173,55 +173,74 @@
       color: #000;
     }
 
-    .phase-section { margin-bottom: 16px; }
+    .phase-section { margin-bottom: 12px; }
 
     .phase-header {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 13px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 14px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
       cursor: pointer;
       user-select: none;
+      background: #3a3a3a;
+      color: #fff;
     }
 
     .phase-header .phase-caret {
       margin-left: auto;
       font-size: 14px;
-      transition: transform 0.2s;
+      transition: transform 0.3s ease;
     }
 
     .phase-header.expanded .phase-caret {
       transform: rotate(180deg);
     }
 
-    .phase-section .ability-list.collapsed { display: none; }
-    .phase-section .phase-header { border-radius: 8px; }
-    .phase-section .phase-header.expanded { border-radius: 8px 8px 0 0; }
-
-    .phase-command .phase-header { background: color-mix(in srgb, var(--phase-command) 20%, transparent); color: var(--phase-command); }
-    .phase-battle-round .phase-header { background: color-mix(in srgb, #b060e0 20%, transparent); color: #b060e0; }
-    .phase-movement .phase-header { background: color-mix(in srgb, var(--phase-movement) 20%, transparent); color: var(--phase-movement); }
-    .phase-shooting .phase-header { background: color-mix(in srgb, var(--phase-shooting) 20%, transparent); color: var(--phase-shooting); }
-    .phase-charge .phase-header { background: color-mix(in srgb, var(--phase-charge) 20%, transparent); color: var(--phase-charge); }
-    .phase-fight .phase-header { background: color-mix(in srgb, var(--phase-fight) 20%, transparent); color: var(--phase-fight); }
-    .phase-end .phase-header { background: color-mix(in srgb, var(--phase-end) 20%, transparent); color: var(--phase-end); }
+    .phase-section .ability-list.collapsed { max-height: 0; overflow: hidden; }
+    .phase-section .phase-header { border-radius: 10px; }
+    .phase-section .phase-header.expanded { border-radius: 10px; }
 
     .ability-list {
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 8px 8px;
+      transition: max-height 0.35s ease;
+      padding: 0 2px;
       overflow: hidden;
     }
 
     .ability-item {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
+      background: #fff;
+      color: #1a1a1a;
+      border-radius: 10px;
+      margin: 8px 0;
+      padding: 12px 14px;
+      border: none;
       transition: opacity 0.2s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .ability-item .ability-desc {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, margin 0.3s ease;
+      margin-top: 0;
+      color: #444;
+    }
+    .ability-item.expanded-tile .ability-desc {
+      max-height: 500px;
+      margin-top: 6px;
+    }
+    .ability-item .ability-unit {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      color: #666;
+    }
+    .ability-item.expanded-tile .ability-unit {
+      max-height: 50px;
     }
 
     .ability-item.dragging {
@@ -235,7 +254,7 @@
 
     .drag-handle {
       cursor: grab;
-      color: var(--text-muted);
+      color: #bbb;
       font-size: 14px;
       padding: 0 6px 0 0;
       user-select: none;
@@ -247,14 +266,14 @@
     .ability-item:last-child { border-bottom: none; }
     .ability-item.used { opacity: 0.35; text-decoration: line-through; }
     .ability-item.dimmed {
-      opacity: 0.4;
+      opacity: 0.5;
       display: inline-flex;
       padding: 4px 8px;
-      border-bottom: none;
-      border: 1px solid var(--border);
-      border-radius: 4px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
       margin: 2px;
       vertical-align: top;
+      background: #f0f0f0;
     }
     .ability-item.dimmed .ability-desc,
     .ability-item.dimmed .ability-unit,
@@ -266,16 +285,16 @@
     .ability-item.dimmed .ability-content .ability-unit { display: none; }
     .ability-item.dimmed .ability-meta { margin-bottom: 0; }
     .ability-item.dimmed .ability-layout { align-items: center; }
-    .ability-item.dimmed .ability-name { font-size: 11px; }
+    .ability-item.dimmed .ability-name { font-size: 11px; color: #888; }
     .ability-item.dimmed .undim-btn { display: inline-grid; width: 22px; height: 22px; font-size: 12px; }
     .undim-btn {
       display: none;
       width: 28px;
       height: 28px;
       border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface-2);
-      color: var(--text-muted);
+      border: 1px solid #ddd;
+      background: #f5f5f5;
+      color: #888;
       font-size: 14px;
       cursor: pointer;
       place-items: center;
@@ -287,7 +306,7 @@
     .ability-list { display: flex; flex-direction: row; flex-wrap: wrap; }
     .ability-item { width: 100%; }
     .ability-item.dimmed { width: auto; }
-    .ability-item.highlighted { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); }
+    .ability-item.highlighted { border-left: 4px solid var(--accent); background: #fffbf0; box-shadow: 0 0 0 1px var(--accent); }
 
     .ability-actions {
       display: flex;
@@ -295,7 +314,7 @@
       gap: 2px;
       flex-shrink: 0;
       padding: 4px;
-      border-left: 1px solid var(--border);
+      border-left: 1px solid #e0e0e0;
       margin-left: auto;
     }
 
@@ -303,9 +322,9 @@
       width: 32px;
       height: 32px;
       border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface-2);
-      color: var(--text-muted);
+      border: 1px solid #e0e0e0;
+      background: #f5f5f5;
+      color: #666;
       font-size: 16px;
       cursor: pointer;
       display: grid;
@@ -332,7 +351,7 @@
       margin-bottom: 4px;
     }
 
-    .ability-name { font-size: 13px; font-weight: 600; }
+    .ability-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
 
     .ability-cost {
       font-size: 11px;
@@ -341,22 +360,20 @@
       border-radius: 4px;
     }
 
-    .cost-free { background: color-mix(in srgb, var(--free) 25%, transparent); color: var(--free); }
-    .cost-1 { background: color-mix(in srgb, var(--cp1) 25%, transparent); color: var(--cp1); }
-    .cost-2 { background: color-mix(in srgb, var(--cp2) 25%, transparent); color: var(--cp2); }
+    .cost-1 { background: #e8a838; color: #fff; }
+    .cost-2 { background: #e85858; color: #fff; }
 
-    .ability-source { font-size: 11px; color: var(--text-muted); }
+    .ability-source { font-size: 11px; color: #888; }
 
     .ability-desc {
       font-size: 12px;
-      color: var(--text-muted);
+      color: #444;
       line-height: 1.4;
-      margin-top: 4px;
     }
 
     .ability-unit {
       font-size: 11px;
-      color: var(--accent);
+      color: #888;
       margin-top: 3px;
     }
 
@@ -1187,7 +1204,7 @@ function renderPhaseSheet(turn) {
           const onceAttr = isOncePerBattle ? `onclick="toggleAbility('${id}')"` : '';
           const onceTag = isOncePerBattle ? '<span class="once-badge">ONCE</span>' : '';
           return `
-            <div class="ability-item ${isUsed ? 'used' : ''} ${stateClass}" data-id="${id}" draggable="true" ${onceAttr}>
+            <div class="ability-item ${isUsed ? 'used' : ''} ${stateClass}" data-id="${id}" draggable="true" ${onceAttr} onclick="toggleTile(this)">
               <div class="ability-layout">
                 <div class="ability-content">
                   <div class="ability-meta">
@@ -1382,19 +1399,25 @@ function dimAbilityGlobal(abilityName, source) {
 
 function togglePhase(headerEl) {
   const list = headerEl.nextElementSibling;
-  const isCollapsed = list.classList.contains('collapsed');
+  const isExpanded = list.classList.contains('expanded');
 
   // Collapse all phases first (accordion)
   document.querySelectorAll('.phase-section .ability-list').forEach(el => {
+    el.classList.remove('expanded');
     el.classList.add('collapsed');
     el.previousElementSibling.classList.remove('expanded');
   });
 
   // If it was collapsed, expand this one
-  if (isCollapsed) {
+  if (!isExpanded) {
     list.classList.remove('collapsed');
+    list.classList.add('expanded');
     headerEl.classList.add('expanded');
   }
+}
+
+function toggleTile(el) {
+  el.classList.toggle('expanded-tile');
 }
 
 // ─── Navigation ───
