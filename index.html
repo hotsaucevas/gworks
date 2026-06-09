@@ -212,13 +212,13 @@
     }
 
     .ability-item {
-      background: #fff;
+      background: #e8e8e8;
       color: #1a1a1a !important;
       border-radius: 10px;
       margin: 8px 0;
       padding: 12px 14px;
       border: none;
-      transition: opacity 0.2s, transform 0.15s;
+      transition: opacity 0.2s, transform 0.15s, background 0.2s;
       cursor: pointer;
     }
 
@@ -305,30 +305,38 @@
     .ability-list { display: flex; flex-direction: row; flex-wrap: wrap; }
     .ability-item { width: 100%; }
     .ability-item.dimmed { width: auto; }
-    .ability-item.highlighted { border-left: 4px solid var(--accent); background: #fffbf0; box-shadow: 0 0 0 1px var(--accent); }
+    .ability-item.highlighted { border-left: 4px solid var(--accent); background: #fff; box-shadow: 0 0 0 1px var(--accent); }
 
     .ability-actions {
-      display: none;
+      display: flex;
       flex-direction: row;
       gap: 4px;
-      margin-left: auto;
       flex-shrink: 0;
     }
 
-    .ability-item.expanded-tile .ability-actions {
-      display: flex;
+    .ability-actions .action-highlight {
+      display: grid;
+    }
+
+    .ability-actions .action-dim,
+    .ability-actions .action-dimall {
+      display: none;
+    }
+
+    .ability-item.expanded-tile .ability-actions .action-dim,
+    .ability-item.expanded-tile .ability-actions .action-dimall {
+      display: grid;
     }
 
     .ability-actions button {
       width: 28px;
       height: 28px;
       border-radius: 6px;
-      border: 1px solid #e0e0e0;
-      background: #f5f5f5;
+      border: 1px solid #ccc;
+      background: #f0f0f0;
       color: #666;
       font-size: 14px;
       cursor: pointer;
-      display: grid;
       place-items: center;
       padding: 0;
     }
@@ -356,6 +364,10 @@
       align-items: center;
       gap: 6px;
       margin-bottom: 4px;
+    }
+
+    .ability-meta .ability-source {
+      margin-right: auto;
     }
 
     .ability-name { font-size: 13px; font-weight: 600; color: #1a1a1a; }
@@ -1220,9 +1232,9 @@ function renderPhaseSheet(turn) {
                   ${costHtml}
                   <span class="ability-source">${ab.source}</span>
                   <span class="ability-actions">
-                    <button onclick="event.stopPropagation(); setAbilityState('${id}','highlighted')" title="Highlight">💡</button>
-                    <button onclick="event.stopPropagation(); setAbilityState('${id}','dimmed')" title="Dim">⊖</button>
-                    <button onclick="event.stopPropagation(); dimAbilityGlobal('${ab.name}','${ab.source}')" title="Dim everywhere">🗑</button>
+                    <button class="action-highlight" onclick="event.stopPropagation(); setAbilityState('${id}','highlighted')" title="Highlight">💡</button>
+                    <button class="action-dim" onclick="event.stopPropagation(); setAbilityState('${id}','dimmed')" title="Dim">⊖</button>
+                    <button class="action-dimall" onclick="event.stopPropagation(); dimAbilityGlobal('${ab.name}','${ab.source}')" title="Dim everywhere">🗑</button>
                   </span>
                   <span class="tile-caret">▾</span>
                 </div>
