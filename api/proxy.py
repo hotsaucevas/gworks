@@ -18,9 +18,19 @@ def get_rsc_raw(html):
         return ''
     raw = ''.join(pushes)
     raw = raw.replace('\\n', '\n')
+    # Handle inch marks: in the raw JS string, an inch mark appears as \\\" 
+    # (escaped backslash + escaped quote). Replace digit+\\\" with placeholder.
+    raw = re.sub(r'(\d)\\\\\\"', r'\1' + INCH_PLACEHOLDER, raw)
+    # Also handle the case where it's just \" after a digit (simpler escaping)
+    raw = re.sub(r'(\d)\\"', r'\1' + INCH_PLACEHOLDER, raw)
     raw = raw.replace('\\\\', '\\')
     raw = raw.replace('\\"', '"')
     return raw
+
+
+def clean_output(text):
+    """Replace inch placeholders back to actual inch marks in final output."""
+    return text.replace(INCH_PLACEHOLDER, '"') if text else text
 
 
 def extract_army_rules(html):
@@ -79,7 +89,7 @@ def extract_army_rules(html):
         if not result["army_rule"]["name"] and ability_names:
             result["army_rule"]["name"] = ability_names[0]
 
-    return json.dumps(result)
+    return clean_output(json.dumps(result))
 
 
 def extract_detachment(html):
@@ -257,7 +267,7 @@ def extract_detachment(html):
                     result["rule"]["description"] = clean[:1500]
                     break
 
-    return json.dumps(result)
+    return clean_output(json.dumps(result))
 
 
 def extract_unit(html):
@@ -350,8 +360,6 @@ def extract_unit(html):
                         parts.sort(key=lambda x: x[0])
                         desc = ''.join(p[1] for p in parts)
 
-        # Replace escaped inch marks
-        desc = desc.replace('\\"', '"').replace('\\', '')
         if desc:
             result["abilities"].append({"name": ab_name, "description": desc})
 
@@ -384,7 +392,7 @@ def extract_unit(html):
         if lead_targets:
             result["can_lead"] = [t.title() for t in lead_targets]
 
-    return json.dumps(result)
+    return clean_output(json.dumps(result))
 
 
 class handler(BaseHTTPRequestHandler):
