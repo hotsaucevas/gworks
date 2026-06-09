@@ -1554,9 +1554,22 @@ function loadNamedList(name) {
       b.classList.toggle('active', b.dataset.turn === (state.activeTurn || 'yours'));
     });
 
-    // Restore tile order
-    if (state.tileOrder) {
-      setTimeout(() => {
+    // Restore tile order and dim/highlight states after render
+    setTimeout(() => {
+      // Apply states to rendered tiles
+      abilityStates.forEach((stateVal, id) => {
+        const el = document.querySelector(`[data-id="${id}"]`);
+        if (el) {
+          el.classList.add(stateVal);
+          if (stateVal === 'dimmed') {
+            const list = el.parentElement;
+            list.appendChild(el);
+          }
+        }
+      });
+
+      // Restore tile order (after states so dimmed items are at bottom)
+      if (state.tileOrder) {
         document.querySelectorAll('.phase-section').forEach(section => {
           const phase = section.querySelector('.phase-header')?.dataset.phase;
           const list = section.querySelector('.ability-list');
@@ -1568,8 +1581,8 @@ function loadNamedList(name) {
             });
           }
         });
-      }, 50);
-    }
+      }
+    }, 50);
 
     localStorage.setItem('gworkshop_active', name);
     showScreen('screenSheet');
