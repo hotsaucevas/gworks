@@ -1053,7 +1053,10 @@ function generatePhaseSheet(turn) {
     abilPhases.forEach(p => {
       if (p === 'all') {
         phases.forEach(phase => {
+          // 'all' doesn't include battle-round — that phase is only for explicit triggers
+          if (phase === 'battle-round') return;
           phaseAbilities[phase].push({ ...ability, source, unitName, cost: cost ?? 0 });
+        });
         });
       } else if (phaseAbilities[p]) {
         phaseAbilities[p].push({ ...ability, source, unitName, cost: cost ?? 0 });
