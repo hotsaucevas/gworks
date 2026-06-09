@@ -1145,9 +1145,10 @@ function generatePhaseSheet(turn) {
     unitData.abilities.forEach(ab => {
       // Skip the invulnerable save and damaged entries
       if (ab.name.includes('invulnerable') || ab.name.includes('DAMAGED')) return;
-      // Skip leader attachment descriptions (not gameplay-relevant during the game)
+      // Skip leader attachment and warlord designation abilities
       const descLower = (ab.description || '').toLowerCase();
       if (descLower.includes('can be attached to') || descLower.includes('can lead') || ab.name.toLowerCase() === 'leader') return;
+      if (descLower.includes('warlord') || ab.name.toUpperCase().includes('WARLORD')) return;
 
       const classified = {
         ...ab,
