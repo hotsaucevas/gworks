@@ -344,6 +344,30 @@
       min-width: 0;
     }
 
+    .tile-caret {
+      margin-left: auto;
+      font-size: 12px;
+      color: #999;
+      transition: transform 0.3s ease;
+    }
+    .ability-item.expanded-tile .tile-caret {
+      transform: rotate(180deg);
+    }
+
+    /* Hide actions panel when tile is collapsed */
+    .ability-item .ability-actions {
+      max-width: 0;
+      overflow: hidden;
+      padding: 0;
+      border-left: none;
+      transition: max-width 0.3s ease, padding 0.3s ease;
+    }
+    .ability-item.expanded-tile .ability-actions {
+      max-width: 50px;
+      padding: 4px;
+      border-left: 1px solid #e0e0e0;
+    }
+
     .ability-meta {
       display: flex;
       align-items: center;
@@ -1213,6 +1237,7 @@ function renderPhaseSheet(turn) {
                     ${onceTag}
                     ${costHtml}
                     <span class="ability-source">${ab.source}</span>
+                    <span class="tile-caret">▾</span>
                   </div>
                   <div class="ability-desc">${ab.description.replace(/\n/g, '<br>')}</div>
                   ${ab.unitName ? `<div class="ability-unit">↳ ${ab.unitName}</div>` : ''}
