@@ -284,7 +284,6 @@
     .ability-item.dimmed .ability-content .ability-desc,
     .ability-item.dimmed .ability-content .ability-unit { display: none; }
     .ability-item.dimmed .ability-meta { margin-bottom: 0; }
-    .ability-item.dimmed .ability-layout { align-items: center; }
     .ability-item.dimmed .ability-name { font-size: 11px; color: #888; }
     .ability-item.dimmed .undim-btn { display: inline-grid; width: 22px; height: 22px; font-size: 12px; }
     .undim-btn {
@@ -309,23 +308,25 @@
     .ability-item.highlighted { border-left: 4px solid var(--accent); background: #fffbf0; box-shadow: 0 0 0 1px var(--accent); }
 
     .ability-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      flex-shrink: 0;
-      padding: 4px;
-      border-left: 1px solid #e0e0e0;
+      display: none;
+      flex-direction: row;
+      gap: 4px;
       margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .ability-item.expanded-tile .ability-actions {
+      display: flex;
     }
 
     .ability-actions button {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border-radius: 6px;
       border: 1px solid #e0e0e0;
       background: #f5f5f5;
       color: #666;
-      font-size: 16px;
+      font-size: 14px;
       cursor: pointer;
       display: grid;
       place-items: center;
@@ -334,38 +335,20 @@
 
     .ability-actions button:active { opacity: 0.7; }
 
-    .ability-layout {
-      display: flex;
-      align-items: stretch;
-    }
-
-    .ability-content {
-      flex: 1;
-      min-width: 0;
-    }
-
     .tile-caret {
-      margin-left: auto;
-      font-size: 12px;
+      font-size: 18px;
       color: #999;
       transition: transform 0.3s ease;
+      margin-left: 8px;
+      flex-shrink: 0;
     }
     .ability-item.expanded-tile .tile-caret {
       transform: rotate(180deg);
     }
 
-    /* Hide actions panel when tile is collapsed */
-    .ability-item .ability-actions {
-      max-width: 0;
-      overflow: hidden;
-      padding: 0;
-      border-left: none;
-      transition: max-width 0.3s ease, padding 0.3s ease;
-    }
-    .ability-item.expanded-tile .ability-actions {
-      max-width: 50px;
-      padding: 4px;
-      border-left: 1px solid #e0e0e0;
+    .ability-content {
+      flex: 1;
+      min-width: 0;
     }
 
     .ability-meta {
@@ -1229,26 +1212,24 @@ function renderPhaseSheet(turn) {
           const onceTag = isOncePerBattle ? '<span class="once-badge">ONCE</span>' : '';
           return `
             <div class="ability-item ${isUsed ? 'used' : ''} ${stateClass}" data-id="${id}" draggable="true" ${onceAttr} onclick="toggleTile(this)">
-              <div class="ability-layout">
-                <div class="ability-content">
-                  <div class="ability-meta">
-                    <span class="drag-handle">⠿</span>
-                    <span class="ability-name">${ab.name}</span>
-                    ${onceTag}
-                    ${costHtml}
-                    <span class="ability-source">${ab.source}</span>
-                    <span class="tile-caret">▾</span>
-                  </div>
-                  <div class="ability-desc">${ab.description.replace(/\n/g, '<br>')}</div>
-                  ${ab.unitName ? `<div class="ability-unit">↳ ${ab.unitName}</div>` : ''}
+              <div class="ability-content">
+                <div class="ability-meta">
+                  <span class="drag-handle">⠿</span>
+                  <span class="ability-name">${ab.name}</span>
+                  ${onceTag}
+                  ${costHtml}
+                  <span class="ability-source">${ab.source}</span>
+                  <span class="ability-actions">
+                    <button onclick="event.stopPropagation(); setAbilityState('${id}','highlighted')" title="Highlight">💡</button>
+                    <button onclick="event.stopPropagation(); setAbilityState('${id}','dimmed')" title="Dim">⊖</button>
+                    <button onclick="event.stopPropagation(); dimAbilityGlobal('${ab.name}','${ab.source}')" title="Dim everywhere">🗑</button>
+                  </span>
+                  <span class="tile-caret">▾</span>
                 </div>
-                <div class="ability-actions">
-                  <button onclick="event.stopPropagation(); setAbilityState('${id}','highlighted')" title="Highlight">💡</button>
-                  <button onclick="event.stopPropagation(); setAbilityState('${id}','dimmed')" title="Dim">✕</button>
-                  <button onclick="event.stopPropagation(); dimAbilityGlobal('${ab.name}','${ab.source}')" title="Dim everywhere">✕✕</button>
-                </div>
-                <button class="undim-btn" onclick="event.stopPropagation(); setAbilityState('${id}','none')" title="Restore">🔆</button>
+                <div class="ability-desc">${ab.description.replace(/\n/g, '<br>')}</div>
+                ${ab.unitName ? `<div class="ability-unit">↳ ${ab.unitName}</div>` : ''}
               </div>
+              <button class="undim-btn" onclick="event.stopPropagation(); setAbilityState('${id}','none')" title="Restore">🔆</button>
             </div>
           `;
         }).join('')}
