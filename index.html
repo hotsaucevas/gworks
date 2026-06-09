@@ -1146,7 +1146,7 @@ function generatePhaseSheet(turn) {
       // Skip leader attachment and warlord designation abilities
       const descLower = (ab.description || '').toLowerCase();
       if (descLower.includes('can be attached to') || descLower.includes('can lead') || ab.name.toLowerCase() === 'leader') return;
-      if (descLower.includes('warlord') || ab.name.toUpperCase().includes('WARLORD')) return;
+      if (descLower.includes('warlord') || ab.name.toUpperCase().includes('WARLORD') || ab.name === 'Supreme Commander' || descLower.includes('it must be your')) return;
 
       const classified = {
         ...ab,
