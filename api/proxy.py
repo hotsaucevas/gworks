@@ -11,6 +11,8 @@ import re
 from urllib.parse import parse_qs, urlparse
 
 
+INCH_PLACEHOLDER = '\u2033'  # Unicode double prime (″) as placeholder for inch marks
+
 def get_rsc_raw(html):
     """Extract and join RSC push payloads from Next.js HTML."""
     pushes = re.findall(r'self\.__next_f\.push\(\[1,"(.*?)"\]\)</script>', html, re.DOTALL)
