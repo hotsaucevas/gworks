@@ -1698,18 +1698,42 @@ function renderSavedLists() {
   }).join('');
 }
 
-// ─── Cloud Sync ───
+// ─── Cloud Sync (JSONBin.io) ───
+const JSONBIN_KEY = '$2a$10$R4kXIYxZ68fiNSfL3wLhRuq5hvYmg/JgTP1QO5fMFTD3BLcTaKm0C';
 let currentUsername = localStorage.getItem('gworkshop_username') || '';
+let userBinId = localStorage.getItem('gworkshop_binid') || '';
 
 async function cloudSave() {
   if (!currentUsername) return;
   const lists = JSON.parse(localStorage.getItem('gworkshop_lists') || '{}');
   try {
-    await fetch('/api/save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: currentUsername, lists })
-    });
+    if (userBinId) {
+      // Update existing bin
+      await fetch(`https://api.jsonbin.io/v3/b/${userBinId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': JSONBIN_KEY
+        },
+        body: JSON.stringify({ username: currentUsername, lists })
+      });
+    } else {
+      // Create new bin
+      const resp = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': JSONBIN_KEY,
+          'X-Bin-Name': `gworkshop-${currentUsername}`
+        },
+        body: JSON.stringify({ username: currentUsername, lists })
+      });
+      const data = await resp.json();
+      if (data.metadata?.id) {
+        userBinId = data.metadata.id;
+        localStorage.setItem('gworkshop_binid', userBinId);
+      }
+    }
   } catch (e) {
     console.warn('Cloud save failed:', e);
   }
@@ -1718,11 +1742,29 @@ async function cloudSave() {
 async function cloudLoad() {
   if (!currentUsername) return false;
   try {
-    const resp = await fetch(`/api/load?username=${encodeURIComponent(currentUsername)}`);
+    // Search for bin by name
+    const resp = await fetch(`https://api.jsonbin.io/v3/c/uncategorized/bins`, {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
     if (!resp.ok) return false;
-    const data = await resp.json();
-    if (data.lists && Object.keys(data.lists).length > 0) {
-      localStorage.setItem('gworkshop_lists', JSON.stringify(data.lists));
+    const bins = await resp.json();
+
+    // Find the bin for this username
+    const userBin = bins.find(b => b.snippetMeta?.name === `gworkshop-${currentUsername}`);
+    if (!userBin) return false;
+
+    userBinId = userBin.record;
+    localStorage.setItem('gworkshop_binid', userBinId);
+
+    // Load the bin content
+    const dataResp = await fetch(`https://api.jsonbin.io/v3/b/${userBinId}/latest`, {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    if (!dataResp.ok) return false;
+    const data = await dataResp.json();
+
+    if (data.record?.lists && Object.keys(data.record.lists).length > 0) {
+      localStorage.setItem('gworkshop_lists', JSON.stringify(data.record.lists));
       return true;
     }
   } catch (e) {
@@ -1736,17 +1778,20 @@ function promptUsername() {
   if (name && name.trim()) {
     currentUsername = name.trim().toLowerCase();
     localStorage.setItem('gworkshop_username', currentUsername);
+    // Clear bin ID since different user
+    userBinId = '';
+    localStorage.removeItem('gworkshop_binid');
     return true;
   }
   return false;
 }
 
-// Update auto-save to also sync to cloud
-const originalSaveClick = document.addEventListener('click', () => {
+// Auto-save to cloud on interactions
+document.addEventListener('click', () => {
   const activeName2 = localStorage.getItem('gworkshop_active');
   if (activeName2 && document.getElementById('screenSheet').classList.contains('active')) {
     saveNamedList(activeName2);
-    cloudSave(); // async, fire-and-forget
+    cloudSave();
   }
 });
 
