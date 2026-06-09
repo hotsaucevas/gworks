@@ -855,7 +855,7 @@ function collectAssignments() {
 
 // ─── Ability Phase Classification (client-side) ───
 function classifyPhase(desc) {
-  const d = (desc || '').toLowerCase();
+  const d = (desc || '').toLowerCase().replace(/[\u2018\u2019\u0027\u02BC]/g, "'");
   const phases = [];
   if (/at the start of the battle round/.test(d)) phases.push('battle-round');
   if (d.includes('command phase')) phases.push('command');
@@ -873,14 +873,14 @@ function classifyPhase(desc) {
 }
 
 function classifyTurn(desc) {
-  const d = (desc || '').toLowerCase();
+  const d = (desc || '').toLowerCase().replace(/[\u2018\u2019\u0027\u02BC]/g, "'");
   if (d.includes("your opponent's") || d.includes("opponent's shooting") || d.includes("opponent's command")) return 'opponents';
   if (d.includes('your command phase') || d.includes('your movement') || d.includes('your shooting')) return 'yours';
   return 'both';
 }
 
 function classifyTrigger(desc) {
-  const d = (desc || '').toLowerCase();
+  const d = (desc || '').toLowerCase().replace(/[\u2018\u2019\u0027\u02BC]/g, "'");
   if (d.includes('at the start')) return 'start';
   if (d.includes('at the end')) return 'end';
   if (d.includes('each time') && d.includes('makes an attack')) return 'when_attacking';
