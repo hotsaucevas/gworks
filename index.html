@@ -862,7 +862,7 @@ function collectAssignments() {
 function classifyPhase(desc) {
   const d = (desc || '').toLowerCase();
   const phases = [];
-  if (/\b(start|beginning) of (the |each |your )?battle round\b/.test(d)) phases.push('battle-round');
+  if (/at the start of the battle round/.test(d)) phases.push('battle-round');
   if (d.includes('command phase')) phases.push('command');
   if (d.includes('movement phase') || d.includes('advance roll')) phases.push('movement');
   if (d.includes('shooting phase') || d.includes('ranged attack')) phases.push('shooting');
