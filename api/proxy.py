@@ -18,11 +18,11 @@ def get_rsc_raw(html):
         return ''
     raw = ''.join(pushes)
     raw = raw.replace('\\n', '\n')
-    # Handle inch marks: in the raw JS string, an inch mark appears as \\\" 
-    # (escaped backslash + escaped quote). Replace digit+\\\" with placeholder.
-    raw = re.sub(r'(\d)\\\\\\"', r'\1' + INCH_PLACEHOLDER, raw)
-    # Also handle the case where it's just \" after a digit (simpler escaping)
-    raw = re.sub(r'(\d)\\"', r'\1' + INCH_PLACEHOLDER, raw)
+    # Handle inch marks: in the raw JS string, an inch mark appears as \\\"
+    # Only match when a space precedes the number (measurement context like "within 9\"")
+    # This avoids matching UUIDs that end in digits
+    raw = re.sub(r'(\s\d+)\\\\\\"', r'\1' + INCH_PLACEHOLDER, raw)
+    raw = re.sub(r'(\s\d+)\\"', r'\1' + INCH_PLACEHOLDER, raw)
     raw = raw.replace('\\\\', '\\')
     raw = raw.replace('\\"', '"')
     return raw
@@ -110,9 +110,10 @@ def extract_detachment(html):
     # it to a detachment entry to get its stratagem detachmentId.
 
     # Find the correct detachmentId for this page's detachment.
-    # The RSC data contains: "id":"<DET_ID>","name":"<DETACHMENT_NAME>"
-    # We match the page title to find the right ID.
     page_title_match = re.search(r'"h1"[^}]*"children":"([^"]+)"', raw)
+    if not page_title_match:
+        # Try alternative H1 patterns
+        page_title_match = re.search(r'Hero_hero__title[^"]*","children":"([^"]+)"', raw)
     page_det_name = page_title_match.group(1) if page_title_match else ''
 
     det_id = None
@@ -130,6 +131,17 @@ def extract_detachment(html):
         slug_match = re.search(r'"key":"([a-z-]+)","name":"[^"]+","details":\{"rules":\[\{"rule":\{"id":"([^"]+)"', raw)
         if slug_match:
             det_id = slug_match.group(2)
+
+    # Second fallback: find any detachment name that matches common patterns
+    if not det_id:
+        # Look for all named detachments and pick one that has stratagems
+        for match in re.finditer(r'"id":"([a-f0-9-]{20,})","name":"([^"]+)"', raw):
+            candidate_id = match.group(1)
+            # Check if this ID is used by stratagems
+            if f'"detachmentId":"{candidate_id}"' in raw:
+                det_id = candidate_id
+                page_det_name = match.group(2)
+                break
 
     for match in re.finditer(r'"stratagem":\{([^}]{50,2000})\}', raw):
         block = '{' + match.group(1) + '}'
@@ -157,7 +169,8 @@ def extract_detachment(html):
                 phase = 'all'
                 if when:
                     w = when.group(1).lower()
-                    if 'command phase' in w: phase = 'command'
+                    if 'any phase' in w: phase = 'all'
+                    elif 'command phase' in w: phase = 'command'
                     elif 'movement phase' in w: phase = 'movement'
                     elif 'shooting phase' in w: phase = 'shooting'
                     elif 'charge phase' in w: phase = 'charge'
@@ -200,15 +213,14 @@ def extract_detachment(html):
                     result["rule"]["description"] = p_match.group(1)
 
     # Enhancements: look for enhancement objects with "name" and "rules"
-    # Filter to only enhancements for THIS detachment using det_id
-    for match in re.finditer(r'"name":"([^"]{3,50})","rules":"(\*\*(?:CHAOS KNIGHTS|WAR DOG)\*\*[^"]{10,500})"', raw):
+    # Generic: match any **KEYWORD** model only pattern, filter by detachmentId proximity
+    for match in re.finditer(r'"name":"([^"]{3,50})","rules":"(\*\*[^*]+\*\* model only\.[^"]{10,500})"', raw):
         name = match.group(1)
         rules = match.group(2).replace('**', '')
-        # Check if this enhancement belongs to this detachment
         region_start = max(0, match.start() - 300)
         region = raw[region_start:match.end() + 300]
         if det_id and det_id in region:
-            desc = re.sub(r'^(?:CHAOS KNIGHTS|WAR DOG) model only\.\s*', '', rules)
+            desc = re.sub(r'^[A-Z][A-Z \u2019\']+ model only\.\s*', '', rules)
             result["enhancements"][name] = {"description": desc}
 
     # If no enhancements matched with detachment ID, try matching by rendered names
@@ -216,17 +228,16 @@ def extract_detachment(html):
         rendered_enh_names = re.findall(r'Enhancement_enhancement__name[^"]*","children":"([^"]+)"', raw)
         if rendered_enh_names:
             for ename in rendered_enh_names:
-                # Find this enhancement's rules
                 enh_match = re.search(r'"name":"' + re.escape(ename) + r'","rules":"([^"]+)"', raw)
                 if enh_match:
                     rules = enh_match.group(1).replace('**', '')
-                    desc = re.sub(r'^(?:CHAOS KNIGHTS|WAR DOG) model only\.\s*', '', rules)
+                    desc = re.sub(r'^[A-Z][A-Z \u2019\']+ model only\.\s*', '', rules)
                     result["enhancements"][ename] = {"description": desc}
         else:
-            for match in re.finditer(r'"name":"([A-Z][A-Za-z\' ]+)","rules":"(\*\*CHAOS KNIGHTS\*\* model only\.[^"]{10,400})"', raw):
+            for match in re.finditer(r'"name":"([A-Z][A-Za-z\' ]+)","rules":"(\*\*[^*]+\*\* model only\.[^"]{10,400})"', raw):
                 name = match.group(1)
                 rules = match.group(2).replace('**', '')
-                desc = re.sub(r'^CHAOS KNIGHTS model only\.\s*', '', rules)
+                desc = re.sub(r'^[A-Z][A-Z \u2019\']+ model only\.\s*', '', rules)
                 if len(desc) > 10:
                     result["enhancements"][name] = {"description": desc}
 
@@ -266,6 +277,43 @@ def extract_detachment(html):
                     clean = text.replace('**', '').strip()
                     result["rule"]["description"] = clean[:1500]
                     break
+
+    # Extract sub-rules from accordion containers (e.g., First Prince of Chaos sub-rules)
+    # These have: "type":"accordion","title":"NAME",...,"textContent":"DESCRIPTION"
+    # Only include accordions that appear near our detachment ID in the data
+    result["sub_rules"] = []
+    for match in re.finditer(r'"type":"accordion","title":"([^"]+)"', raw):
+        title = match.group(1)
+        # Skip numbered dread abilities (army rule, not detachment)
+        if re.match(r'^(\d+|N/A)\s*-\s*', title):
+            continue
+        # Check proximity to our detachment ID (within 5000 chars before)
+        if det_id:
+            region_before = raw[max(0, match.start() - 5000):match.start()]
+            if det_id not in region_before:
+                continue
+        # Find textContent in the region after the title
+        region = raw[match.end():match.end() + 2000]
+        tc_idx = region.find('"textContent":"')
+        if tc_idx >= 0:
+            tc_start = tc_idx + len('"textContent":"')
+            i = tc_start
+            while i < len(region) - 1:
+                if region[i] == '"' and region[i+1] in (',', '}'):
+                    break
+                i += 1
+            text = region[tc_start:i]
+            text = text.replace('\\n', '\n').replace('**', '').strip()
+            # Skip stratagems/enhancements already captured
+            if title in [s["name"] for s in result["stratagems"]]:
+                continue
+            if title in result["enhancements"]:
+                continue
+            # Clean: remove italic markers and backslash line breaks
+            text = re.sub(r'\*[^*]+\*\s*', '', text).strip()
+            text = re.sub(r'\\+\s*', '\n', text).strip()
+            if text:
+                result["sub_rules"].append({"name": title, "description": text[:500]})
 
     return clean_output(json.dumps(result))
 

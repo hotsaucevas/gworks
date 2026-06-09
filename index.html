@@ -264,7 +264,6 @@
     .drag-handle:active { cursor: grabbing; }
 
     .ability-item:last-child { border-bottom: none; }
-    .ability-item.used { opacity: 0.35; text-decoration: line-through; }
     .ability-item.dimmed {
       opacity: 0.5;
       display: inline-flex;
@@ -282,10 +281,11 @@
     .ability-item.dimmed .ability-cost,
     .ability-item.dimmed .ability-source,
     .ability-item.dimmed .ability-content .ability-desc,
-    .ability-item.dimmed .ability-content .ability-unit { display: none; }
+    .ability-item.dimmed .ability-content .ability-unit,
+    .ability-item.dimmed .tile-caret,
+    .ability-item.dimmed .undim-btn { display: none; }
     .ability-item.dimmed .ability-meta { margin-bottom: 0; }
     .ability-item.dimmed .ability-name { font-size: 11px; color: #888; }
-    .ability-item.dimmed .undim-btn { display: inline-grid; width: 22px; height: 22px; font-size: 12px; }
     .undim-btn {
       display: none;
       width: 28px;
@@ -305,7 +305,7 @@
     .ability-list { display: flex; flex-direction: row; flex-wrap: wrap; }
     .ability-item { width: 100%; }
     .ability-item.dimmed { width: auto; }
-    .ability-item.highlighted { border-left: 4px solid var(--accent); background: #fff; box-shadow: 0 0 0 1px var(--accent); }
+    .ability-item.highlighted { border-left: 4px solid #4a9; background: #e8f8f0; box-shadow: 0 0 0 1px #4a9; }
 
     .ability-actions {
       display: flex;
@@ -445,12 +445,6 @@
 
 <div class="header">
   <h1>PHASE SHEET</h1>
-  <div class="cp-tracker" id="cpTracker" style="display:none;">
-    <button id="cpMinus">−</button>
-    <span class="cp-value" id="cpValue">0</span>
-    <button id="cpPlus">+</button>
-    <span style="font-size:11px; color:var(--text-muted);">CP</span>
-  </div>
 </div>
 
 <!-- Screen 1: Input -->
@@ -858,11 +852,12 @@ function classifyPhase(desc) {
   const d = (desc || '').toLowerCase().replace(/[\u2018\u2019\u0027\u02BC]/g, "'");
   const phases = [];
   if (/at the start of the battle round/.test(d)) phases.push('battle-round');
-  if (d.includes('command phase')) phases.push('command');
-  if (d.includes('movement phase') || d.includes('advance roll')) phases.push('movement');
+  if (d.includes('command phase') || d.includes('leadership') || d.includes('battle-shock')) phases.push('command');
+  if (d.includes('movement phase') || d.includes('advance roll') || d.includes('advance') || d.includes('assault')) phases.push('movement');
   if (d.includes('shooting phase') || d.includes('ranged attack')) phases.push('shooting');
   if (d.includes('fight phase') || d.includes('melee attack')) phases.push('fight');
   if (/charge (phase|roll|move)/.test(d) && !d.includes('shooting')) phases.push('charge');
+  if (/an attack targets this unit/.test(d) || /attack is allocated to this/.test(d)) { if (!phases.includes('shooting')) phases.push('shooting'); if (!phases.includes('fight')) phases.push('fight'); }
   // End phase: only match explicit "end phase" or "end of the/your turn" — NOT "until the end of the phase"
   if (/\b(end phase|at the end of .*(turn|battle round))\b/.test(d)) phases.push('end');
   if (phases.length === 0) {
@@ -874,8 +869,14 @@ function classifyPhase(desc) {
 
 function classifyTurn(desc) {
   const d = (desc || '').toLowerCase().replace(/[\u2018\u2019\u0027\u02BC]/g, "'");
-  if (d.includes("your opponent's") || d.includes("opponent's shooting") || d.includes("opponent's command")) return 'opponents';
-  if (d.includes('your command phase') || d.includes('your movement') || d.includes('your shooting')) return 'yours';
+  // Check "yours" indicators first (WHEN timing takes priority over duration text)
+  if (d.includes('your command phase') || d.includes('your movement') || d.includes('your shooting phase') || d.includes('your charge phase')) return 'yours';
+  if (/^(when|target|effect).*your (shooting|movement|command|charge|fight)/m.test(d)) return 'yours';
+  // Then check opponent indicators
+  if (d.includes("your opponent's shooting") || d.includes("your opponent's command") || d.includes("your opponent's charge") || d.includes("your opponent's movement") || d.includes("your opponent's fight")) return 'opponents';
+  if (/an attack targets this unit/.test(d) || /attack is allocated to this/.test(d)) return 'opponents';
+  if (d.includes("your opponent's turn") && !d.includes('your shooting') && !d.includes('your command')) return 'opponents';
+  if (d.includes('advance') || d.includes('charge roll') || d.includes('this unit is selected to shoot or fight')) return 'yours';
   return 'both';
 }
 
@@ -897,7 +898,7 @@ const DREAD_ABILITIES = {
     id: 'deathly-terror',
     name: 'Deathly Terror (Aura)',
     description: 'While an enemy unit is within 9" of this model, worsen the Leadership characteristic of models in that unit by 1.',
-    phase: 'all', turn: 'both', trigger: 'passive'
+    phase: 'command', turn: 'both', trigger: 'passive'
   },
   selectable: [
     { id: 'despair', name: '1 — Despair (Aura)', description: 'While an enemy unit is within 9" of this model, worsen the Leadership of models in that unit by 1 (cumulative with Deathly Terror).', phase: 'all', turn: 'both', trigger: 'passive' },
@@ -1026,7 +1027,7 @@ function renderDreadPanel() {
 
 // ─── Core Stratagems (always available) ───
 const CORE_STRATAGEMS = [
-  { name: "Command Re-roll", cost: 1, phase: "all", turn: "both", trigger: "any_roll", description: "Re-roll one Hit roll, Wound roll, Damage roll, saving throw, Advance roll, Charge roll, Desperate Escape test, Hazardous test, or roll for number of attacks. Works with fast dice rolling (select one to re-roll)." },
+  { name: "Command Re-roll", cost: 1, phase: "movement,shooting,charge,fight", turn: "both", trigger: "any_roll", description: "Re-roll one Hit roll, Wound roll, Damage roll, saving throw, Advance roll, Charge roll, Desperate Escape test, Hazardous test, or roll for number of attacks. Works with fast dice rolling (select one to re-roll)." },
   { name: "Counter-offensive", cost: 2, phase: "fight", turn: "both", trigger: "when_fighting", description: "Use just after an enemy unit has fought. Select one of your units within Engagement Range that has not fought this phase. Your unit fights next." },
   { name: "Epic Challenge", cost: 1, phase: "fight", turn: "both", trigger: "when_fighting", description: "Use when a CHARACTER unit within Engagement Range of one or more Attached units is selected to fight. One CHARACTER model's melee attacks gain [PRECISION] until end of phase." },
   { name: "Insane Bravery", cost: 1, phase: "command", turn: "yours", trigger: "when_testing", description: "Use just before a Battle-shock test. That unit automatically passes. Once per battle." },
@@ -1050,18 +1051,31 @@ function generatePhaseSheet(turn) {
     const abilTurn = ability.turn;
     if (abilTurn !== 'both' && abilTurn !== turn) return;
 
+    const primaryPhases = new Set(abilPhases.filter(p => p !== 'all'));
+
     abilPhases.forEach(p => {
       if (p === 'all') {
         phases.forEach(phase => {
-          // 'all' doesn't include battle-round — that phase is only for explicit triggers
           if (phase === 'battle-round') return;
-          phaseAbilities[phase].push({ ...ability, source, unitName, cost: cost ?? 0 });
-        });
+          // Stratagems with "all" genuinely apply everywhere — don't auto-dim them
+          const shouldAutoDim = (source === 'Stratagem' || source === 'Core') ? false : (!primaryPhases.size);
+          phaseAbilities[phase].push({ ...ability, source, unitName, cost: cost ?? 0, _autoDim: shouldAutoDim });
         });
       } else if (phaseAbilities[p]) {
-        phaseAbilities[p].push({ ...ability, source, unitName, cost: cost ?? 0 });
+        phaseAbilities[p].push({ ...ability, source, unitName, cost: cost ?? 0, _autoDim: false });
       }
     });
+
+    // For abilities with specific primary phases, also add dimmed to other phases
+    // But NOT for stratagems — they are strictly phase-locked
+    if (primaryPhases.size > 0 && !abilPhases.includes('all') && source !== 'Stratagem' && source !== 'Core' && source !== 'Army Rule' && source !== 'Detachment Rule' && source !== 'Malefic Surge' && source !== 'Enhancement') {
+      phases.forEach(phase => {
+        if (phase === 'battle-round') return;
+        if (primaryPhases.has(phase)) return; // already added full
+        if (abilTurn !== 'both' && abilTurn !== turn) return;
+        phaseAbilities[phase].push({ ...ability, source, unitName, cost: cost ?? 0, _autoDim: true });
+      });
+    }
   }
 
   // 1. Army Rule — special handling for Chaos Knights Harbingers of Dread
@@ -1078,7 +1092,7 @@ function generatePhaseSheet(turn) {
     addAbility({
       name: 'Select Dread Abilities',
       description: 'At the start of rounds 1, 3, and 5: pick one Dread ability OR roll 2D6 to randomly activate two. Use the tracker above to mark active abilities.',
-      phase: 'command', turn: 'yours', trigger: 'start'
+      phase: 'battle-round', turn: 'yours', trigger: 'start'
     }, 'Army Rule', null, 0);
   } else if (fetchedData.armyRule?.name) {
     addAbility({
@@ -1107,16 +1121,31 @@ function generatePhaseSheet(turn) {
         }
       });
     } else {
-      // Generic detachment rule
-      const ruleDesc = fetchedData.detachment.rule.description || fetchedData.detachment.rule.name;
-      addAbility({
-        name: fetchedData.detachment.rule.name,
-        description: ruleDesc,
-        phase: 'command',
-        turn: 'yours',
-        trigger: 'start'
-      }, 'Detachment Rule', null, 0);
+      // Generic detachment rule — skip if we have sub-rules (they'll be shown individually)
+      if (!fetchedData.detachment.sub_rules || fetchedData.detachment.sub_rules.length === 0) {
+        const ruleDesc = fetchedData.detachment.rule.description || fetchedData.detachment.rule.name;
+        addAbility({
+          name: fetchedData.detachment.rule.name,
+          description: ruleDesc,
+          phase: 'command',
+          turn: 'yours',
+          trigger: 'start'
+        }, 'Detachment Rule', null, 0);
+      }
     }
+  }
+
+  // 2b. Detachment Sub-rules (e.g., First Prince of Chaos sub-abilities)
+  if (fetchedData.detachment?.sub_rules) {
+    fetchedData.detachment.sub_rules.forEach(sr => {
+      addAbility({
+        name: sr.name,
+        description: sr.description,
+        phase: classifyPhase(sr.description),
+        turn: classifyTurn(sr.description),
+        trigger: classifyTrigger(sr.description)
+      }, 'Detachment Rule', null, 0);
+    });
   }
 
   // 3. Detachment Stratagems
@@ -1166,9 +1195,9 @@ function generatePhaseSheet(turn) {
       addAbility({
         name: enhName,
         description: enh.description,
-        phase: 'all',
-        turn: 'both',
-        trigger: 'passive'
+        phase: classifyPhase(enh.description),
+        turn: classifyTurn(enh.description),
+        trigger: classifyTrigger(enh.description)
       }, 'Enhancement', unitName, 0);
     }
   });
@@ -1188,20 +1217,25 @@ function renderPhaseSheet(turn) {
     if (abilities.length === 0) return;
 
     abilities.sort((a, b) => {
-      // Primary sort: by source group
+      // First: auto-dimmed items go to the bottom
+      if (a._autoDim !== b._autoDim) return a._autoDim ? 1 : -1;
+      // Also check manually dimmed state
+      const aDimmed = abilityStates.get(`${turn}-${phase}-${abilities.indexOf(a)}`) === 'dimmed';
+      const bDimmed = abilityStates.get(`${turn}-${phase}-${abilities.indexOf(b)}`) === 'dimmed';
+      if (aDimmed !== bDimmed) return aDimmed ? 1 : -1;
+      // Then by source group
       const sourceOrder = ['Army Rule', 'Dread Ability', 'Detachment Rule', 'Malefic Surge', 'Stratagem', 'Enhancement', 'Core'];
       const getSourceGroup = (source) => {
         const idx = sourceOrder.indexOf(source);
         if (idx >= 0) return idx;
-        // Unit-specific abilities (source is a unit name) go between Stratagem and Core
         return 5.5;
       };
       const groupA = getSourceGroup(a.source);
       const groupB = getSourceGroup(b.source);
       if (groupA !== groupB) return groupA - groupB;
-      // Secondary sort: by source name (groups unit abilities together)
+      // By source name
       if (a.source !== b.source) return a.source.localeCompare(b.source);
-      // Tertiary: by trigger timing
+      // By trigger timing
       return triggerOrder.indexOf(a.trigger) - triggerOrder.indexOf(b.trigger);
     });
 
@@ -1214,15 +1248,16 @@ function renderPhaseSheet(turn) {
           const id = `${turn}-${phase}-${i}`;
           const isUsed = usedAbilities.has(id);
           const dimState = abilityStates.get(id);
-          const stateClass = dimState === 'dimmed' ? 'dimmed' : dimState === 'highlighted' ? 'highlighted' : '';
+          // Auto-dim if ability isn't in its primary phase and user hasn't manually set state
+          const effectiveState = dimState || (ab._autoDim ? 'dimmed' : '');
+          const stateClass = effectiveState === 'dimmed' ? 'dimmed' : effectiveState === 'highlighted' ? 'highlighted' : '';
           const costClass = ab.cost === 0 ? '' : ab.cost === 1 ? 'cost-1' : 'cost-2';
           const costLabel = ab.cost === 0 ? '' : `${ab.cost}CP`;
           const costHtml = costLabel ? `<span class="ability-cost ${costClass}">${costLabel}</span>` : '';
           const isOncePerBattle = /once per battle(?!\s*round)/i.test(ab.description);
-          const onceAttr = isOncePerBattle ? `onclick="toggleAbility('${id}')"` : '';
           const onceTag = isOncePerBattle ? '<span class="once-badge">ONCE</span>' : '';
           return `
-            <div class="ability-item ${isUsed ? 'used' : ''} ${stateClass}" data-id="${id}" draggable="true" ${onceAttr} onclick="toggleTile(this)">
+            <div class="ability-item ${isUsed ? 'used' : ''} ${stateClass}" data-id="${id}" draggable="true" onclick="toggleTile(this)">
               <div class="ability-content">
                 <div class="ability-meta">
                   <span class="drag-handle">⠿</span>
@@ -1434,6 +1469,14 @@ function togglePhase(headerEl) {
 }
 
 function toggleTile(el) {
+  // If dimmed, undim and expand
+  if (el.classList.contains('dimmed')) {
+    const id = el.dataset.id;
+    abilityStates.delete(id);
+    el.classList.remove('dimmed');
+    el.classList.add('expanded-tile');
+    return;
+  }
   el.classList.toggle('expanded-tile');
 }
 
@@ -1441,19 +1484,7 @@ function toggleTile(el) {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  document.getElementById('cpTracker').style.display = id === 'screenSheet' ? 'flex' : 'none';
 }
-
-// ─── CP Tracker ───
-document.getElementById('cpPlus').addEventListener('click', () => {
-  cp++;
-  document.getElementById('cpValue').textContent = cp;
-});
-
-document.getElementById('cpMinus').addEventListener('click', () => {
-  if (cp > 0) cp--;
-  document.getElementById('cpValue').textContent = cp;
-});
 
 // ─── Turn Toggle ───
 document.querySelector('.turn-toggle').addEventListener('click', (e) => {
@@ -1503,7 +1534,6 @@ document.getElementById('btnGenerate').addEventListener('click', () => {
   collectAssignments();
   cp = 0;
   usedAbilities.clear();
-  document.getElementById('cpValue').textContent = '0';
   renderDreadPanel();
   renderPhaseSheet('yours');
   showScreen('screenSheet');
@@ -1530,11 +1560,11 @@ document.getElementById('btnReset').addEventListener('click', () => {
 
 document.getElementById('btnSave').addEventListener('click', () => {
   if (!parsedArmy) return;
-  // Get list name from the parsed export (first line before points)
   const defaultName = parsedArmy.listName || `${parsedArmy.faction} - ${parsedArmy.detachment}`;
   const name = prompt('Save list as:', defaultName);
   if (!name) return;
   saveNamedList(name);
+  cloudSave();
 });
 
 // ─── Named Save / Load System ───
@@ -1586,7 +1616,6 @@ function loadNamedList(name) {
     activeDread = new Set(state.activeDread || []);
     activeSurge = new Set(state.activeSurge || []);
 
-    document.getElementById('cpValue').textContent = cp;
     renderDreadPanel();
     renderPhaseSheet(state.activeTurn || 'yours');
 
@@ -1669,22 +1698,80 @@ function renderSavedLists() {
   }).join('');
 }
 
-// Auto-save active list on interactions
-document.addEventListener('click', () => {
-  const activeName = localStorage.getItem('gworkshop_active');
-  if (activeName && document.getElementById('screenSheet').classList.contains('active')) {
-    saveNamedList(activeName);
+// ─── Cloud Sync ───
+let currentUsername = localStorage.getItem('gworkshop_username') || '';
+
+async function cloudSave() {
+  if (!currentUsername) return;
+  const lists = JSON.parse(localStorage.getItem('gworkshop_lists') || '{}');
+  try {
+    await fetch('/api/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUsername, lists })
+    });
+  } catch (e) {
+    console.warn('Cloud save failed:', e);
+  }
+}
+
+async function cloudLoad() {
+  if (!currentUsername) return false;
+  try {
+    const resp = await fetch(`/api/load?username=${encodeURIComponent(currentUsername)}`);
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    if (data.lists && Object.keys(data.lists).length > 0) {
+      localStorage.setItem('gworkshop_lists', JSON.stringify(data.lists));
+      return true;
+    }
+  } catch (e) {
+    console.warn('Cloud load failed:', e);
+  }
+  return false;
+}
+
+function promptUsername() {
+  const name = prompt('Enter your username (for syncing across devices):', currentUsername);
+  if (name && name.trim()) {
+    currentUsername = name.trim().toLowerCase();
+    localStorage.setItem('gworkshop_username', currentUsername);
+    return true;
+  }
+  return false;
+}
+
+// Update auto-save to also sync to cloud
+const originalSaveClick = document.addEventListener('click', () => {
+  const activeName2 = localStorage.getItem('gworkshop_active');
+  if (activeName2 && document.getElementById('screenSheet').classList.contains('active')) {
+    saveNamedList(activeName2);
+    cloudSave(); // async, fire-and-forget
   }
 });
 
-// On startup: try to load the last active list, otherwise show input
-const activeName = localStorage.getItem('gworkshop_active');
-if (activeName && loadNamedList(activeName)) {
-  // loaded successfully
-} else {
-  renderSavedLists();
-  showScreen('screenInput');
+// On startup: prompt for username if not set, load from cloud, then show lists
+async function startup() {
+  if (!currentUsername) {
+    promptUsername();
+  }
+
+  // Try loading from cloud first
+  if (currentUsername) {
+    await cloudLoad();
+  }
+
+  // Try to load the last active list
+  const activeName = localStorage.getItem('gworkshop_active');
+  if (activeName && loadNamedList(activeName)) {
+    // loaded successfully
+  } else {
+    renderSavedLists();
+    showScreen('screenInput');
+  }
 }
+
+startup();
 </script>
 </body>
 </html>
